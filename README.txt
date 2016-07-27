@@ -5,21 +5,32 @@ preparation:
 ------------
 The following steps have to be executed once:
 
+    install virtual env:
+    --------------------
+    In the the folder odoo_instances run the following commands:
+        virtualenv python
+        bin/pip install -r install/requirements.txt
+
+
     create localdata.py:
     --------------------
     To be able to run create_site or update_local_db you have to create and edit
     localdata.py. There is a template you can copy:
         cp localdata.py.in localdata.py
 
+
     create a config file with info about your project settings:
     -----------------------------------------------------------
     The scripts need to know where to write the new projects.
-        bin/c.sh -r
-    This will ask two questions:
+    run:
+        bin/c -r
+    This will ask some questions:
     1. path to the projects
         This is where new projects are created
-    2. path to the project skeleton
-        just accept the proposed default, it is not relevant anymore.
+
+    ..
+    
+now you are ready to go
 
 
 create new site:

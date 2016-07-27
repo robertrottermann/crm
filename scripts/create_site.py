@@ -156,14 +156,17 @@ if __name__ == '__main__':
     "localdata.py: It contains the name and password of the local postgres user. not managed by svn\n" \
     "**************************\n" \
     "\n-h for help on usage"
+    parent_parser = argparse.ArgumentParser(add_help=False)
     parser = ArgumentParser(usage=usage)# ArgumentParser(usage=usage)
     subparsers = parser.add_subparsers(title='subcommands', description='valid subcommands', help='there are several sub commands')
-    parser_site   = subparsers.add_parser('s', help='the option -s --site-description has the following subcommands')
+    parser_site   = subparsers.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
 
     # -----------------------------------------------
     # manage sites create and update sites
     # -----------------------------------------------
-    parser_manage = subparsers.add_parser('c', help='the option -m --manage-sites has the following subcommands')
+    #http://stackoverflow.com/questions/10448200/how-to-parse-multiple-sub-commands-using-python-argparse
+    parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
+    parser_manage = parser_site_s.add_parser('c', help='the option -m --manage-sites has the following subcommands', parents=[parent_parser])
     parser_manage.add_argument(
         "--add-site",
         action="store_true", dest="add_site", default=False,
@@ -188,7 +191,7 @@ if __name__ == '__main__':
     # -----------------------------------------------
     # support commands
     # -----------------------------------------------
-    parser_support= subparsers.add_parser('S', help='the option -S --support has the following subcommands')
+    parser_support= parser_manage.add_parser('S', help='the option -S --support has the following subcommands', parents=[parent_parser])
     parser_support.add_argument(
         "-a", "--alias",
         action="store_true", dest="alias", default=False,
@@ -203,7 +206,7 @@ if __name__ == '__main__':
     # -----------------------------------------------
     # manage docker
     # -----------------------------------------------
-    parser_docker = subparsers.add_parser('d', help='the option -d --docker has the following subcommands')
+    parser_docker = parser_support.add_parser('d', help='the option -d --docker has the following subcommands', parents=[parent_parser])
     parser_docker.add_argument(
         "-C", "--create_container",
         action="store_true", dest="create_container", default=False,
@@ -213,7 +216,7 @@ if __name__ == '__main__':
     # -----------------------------------------------
     # manage remote server can be localhost
     # -----------------------------------------------
-    parser_remote = subparsers.add_parser('r', help='the option -r --remote has the following subcommands')
+    parser_remote = parser_docker.add_parser('r', help='the option -r --remote has the following subcommands', parents=[parent_parser])
     parser_remote.add_argument(
         "--add-apache",
         action="store_true", dest="add_apache", default=False,
@@ -374,34 +377,4 @@ if __name__ == '__main__':
     #(opts, args) = parser.parse_args()
     opts = parser.parse_args()
     # is there a valid option?
-    if not (
-        opts.alias or
-        opts.create_container or
-        opts.create_server or
-        opts.create or
-        opts.directories or
-        opts.list_sites or
-        opts.reset or
-        opts.add_apache or
-        opts.add_site_local or
-        opts.add_site or
-        opts.module_add or
-        opts.module_create or
-        opts.simple_update or
-        opts.dataupdate or
-        opts.dataupdate_docker or
-        opts.norefresh or
-        opts.transferlocal or
-        opts.transferdocker or
-        opts.showmodulediff or
-        opts.installodoomodules or
-        opts.updateown or
-        opts.installown or
-        opts.listmodules or
-        opts.listownmodules or
-        opts.removeown or
-        opts.showmodulediff_refresh
-        ):
-        print usage
-        sys.exit(99)
     main(opts) #opts.noinit, opts.initonly)
