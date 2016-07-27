@@ -157,9 +157,20 @@ if __name__ == '__main__':
     "**************************\n" \
     "\n-h for help on usage"
     parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
+        "-n", "--name",
+        action=NameAction, dest="name", default=False,
+        help = 'name of the site to create'
+    )
+    parent_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true", dest="verbose", default=False,
+        help="be verbose")
+
+    
     parser = ArgumentParser(usage=usage)# ArgumentParser(usage=usage)
-    subparsers = parser.add_subparsers(title='subcommands', description='valid subcommands', help='there are several sub commands')
-    parser_site   = subparsers.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
+    parser_s = parser.add_subparsers(title='subcommands', dest="subcommands")
+    parser_site   = parser_s.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
 
     # -----------------------------------------------
     # manage sites create and update sites
@@ -187,11 +198,67 @@ if __name__ == '__main__':
         action="store_true", dest="directories", default=False,
         help = 'create local directories for a site. option -n must be set and valid'
     )
-
+    parser_manage.add_argument(
+        "-lo", "--listownmodules",
+        action="store_true", dest="listownmodules", default=False,
+        help = 'list installable modules from the sites.py sites description'
+    )
+    parser_manage.add_argument(
+        "-io", "--installown",
+        action="store_true", dest="installown", default=False,
+        help = 'install modules listed as addons'
+    )
+    parser_manage.add_argument(
+        "-uo", "--updateown",
+        action="store", dest="updateown", default='',
+        help = 'update modules listed as addons, pass a comma separated list (no spaces) or all'
+    )
+    parser_manage.add_argument(
+        "-ro", "--removeown",
+        action="store", dest="removeown", default='',
+        help = 'remove modules listed as addons, pass a comma separated list (no spaces) or all'
+    )
+    parser_manage.add_argument(
+        "-I", "--installodoomodules",
+        action="store_true", dest="installodoomodules", default=False,
+        help = 'install modules listed as odoo addons'
+    )
+    parser_manage.add_argument(
+        "-ls", "--list",
+        action="store_true", dest="list_sites", default=False,
+        help = 'list available sites'
+    )
+    parser_manage.add_argument(
+        "-lm", "--listmodules",
+        action="store_true", dest="listmodules", default=False,
+        help = 'list installable module sets like CRM ..'
+    )
+    parser_manage.add_argument(
+        "-N", "--norefresh",
+        action="store_true", dest="norefresh", default=False,
+        help = 'do not refresh local data, only update database with existing dump'
+    )
+    parser_manage.add_argument(
+        "-nupdb", "--noupdatedb",
+        action="store_true", dest="noupdatedb", default=False,
+        help = 'do not update local database, only update local data from remote site'
+    )
+    parser_manage.add_argument(
+        "-o", "--override-remote",
+        action="store", dest="overrideremote", default=False,
+        help = 'override remote settings for testing purpose'
+    )
+    parser_manage.add_argument(
+        "-u", "--dataupdate",
+        action="store_true", dest="dataupdate", default=False,
+        help = 'update local data from remote server'
+    )
+    
     # -----------------------------------------------
     # support commands
     # -----------------------------------------------
-    parser_support= parser_manage.add_parser('S', help='the option -S --support has the following subcommands', parents=[parent_parser])
+    parser_manage_s = parser_manage.add_subparsers(title='manage sites', dest="site_manage_commands")
+    parser_support= parser_manage_s.add_parser('support', help='the option -sites --support has the following subcommands', parents=[parent_parser])
     parser_support.add_argument(
         "-a", "--alias",
         action="store_true", dest="alias", default=False,
@@ -202,21 +269,56 @@ if __name__ == '__main__':
         action="store_true", dest="simple_update", default=False,
         help = 'Just update login_info.py.in, base_setup.cfg and bin/dosetup, so we can rerun dosetup'
     )
-
+    parser_support.add_argument(
+        "-II",
+        action="store_true", dest="showmodulediff", default=False,
+        help = 'list difference on modules installed as odoo addons, keep old list'
+    )
+    parser_support.add_argument(
+        "-III",
+        action="store_true", dest="showmodulediff_refresh", default=False,
+        help = 'list difference on modules installed as odoo addons, overwrite old list'
+    )
+    parser_support.add_argument(
+        "-r", "--reset",
+        action="store_true", dest="reset", default=False,
+        help = 'reset skeleton and projects path'
+    )
+    
     # -----------------------------------------------
     # manage docker
     # -----------------------------------------------
-    parser_docker = parser_support.add_parser('d', help='the option -d --docker has the following subcommands', parents=[parent_parser])
+    parser_support_s = parser_support.add_subparsers(title='docker commands', dest="docker_commands")
+    parser_docker = parser_support_s.add_parser('d', help='the option -d --docker has the following subcommands', parents=[parent_parser])
     parser_docker.add_argument(
         "-C", "--create_container",
         action="store_true", dest="create_container", default=False,
         help = 'create a docker container, also option -n --name must be set'
     )
+    parser_docker.add_argument("-ddbuser", "--dockerdbuser",
+                        action="store", dest="dockerdbuser", default='odoo',
+                        help="user to access db in a docker, default odoo")
 
+    parser_docker.add_argument("-ddbpw", "--dockerdbpw",
+                        action="store", dest="dockerdbpw", default='odoo',
+                        help="password to access db in a docker, default odoo")
+
+    parser_docker.add_argument(
+        "-td", "--transferdocker",
+        action="store_true", dest="transferdocker", default=False,
+        help = 'transfer data from master to slave using docker'
+    )
+    parser_docker.add_argument(
+        "-ud", "--dataupdate_docker",
+        action="store_true", dest="dataupdate_docker", default=False,
+        help = 'update local data from remote server into local docker'
+    )
+    
     # -----------------------------------------------
-    # manage remote server can be localhost
+    # manage remote server (can be localhost)
     # -----------------------------------------------
-    parser_remote = parser_docker.add_parser('r', help='the option -r --remote has the following subcommands', parents=[parent_parser])
+    parser_docker_s = parser_docker.add_subparsers(title='remote commands', dest="remote_commands")
+    parser_remote = parser_docker_s.add_parser('r', help='the option -r --remote has the following subcommands', parents=[parent_parser])
     parser_remote.add_argument(
         "--add-apache",
         action="store_true", dest="add_apache", default=False,
@@ -227,153 +329,44 @@ if __name__ == '__main__':
         action="store_true", dest="create_server", default=False,
         help = 'run create script on server -n --name must be set'
     )
-
-#--------------------------------------------
-    parser.add_argument(
-        "-lo", "--listownmodules",
-        action="store_true", dest="listownmodules", default=False,
-        help = 'list installable modules from the sites.py sites description'
-    )
-    parser.add_argument(
-        "-io", "--installown",
-        action="store_true", dest="installown", default=False,
-        help = 'install modules listed as addons'
-    )
-    parser.add_argument(
-        "-uo", "--updateown",
-        action="store", dest="updateown", default='',
-        help = 'update modules listed as addons, pass a comma separated list (no spaces) or all'
-    )
-    parser.add_argument(
-        "-ro", "--removeown",
-        action="store", dest="removeown", default='',
-        help = 'remove modules listed as addons, pass a comma separated list (no spaces) or all'
-    )
-    parser.add_argument(
-        "-I", "--installodoomodules",
-        action="store_true", dest="installodoomodules", default=False,
-        help = 'install modules listed as odoo addons'
-    )
-    parser.add_argument(
-        "-II",
-        action="store_true", dest="showmodulediff", default=False,
-        help = 'list difference on modules installed as odoo addons, keep old list'
-    )
-    parser.add_argument(
-        "-III",
-        action="store_true", dest="showmodulediff_refresh", default=False,
-        help = 'list difference on modules installed as odoo addons, overwrite old list'
-    )
-    parser.add_argument(
-        "-ls", "--list",
-        action="store_true", dest="list_sites", default=False,
-        help = 'list available sites'
-    )
-    parser.add_argument(
-        "-lm", "--listmodules",
-        action="store_true", dest="listmodules", default=False,
-        help = 'list installable module sets like CRM ..'
-    )
-    parser.add_argument(
-        "-n", "--name",
-        action=NameAction, dest="name", default=False,
-        help = 'name of the site to create'
-    )
-    # add second
-    #parser.add_argument('sitename', nargs='?')
-    parser.add_argument(
-        "-N", "--norefresh",
-        action="store_true", dest="norefresh", default=False,
-        help = 'do not refresh local data, only update database with existing dump'
-    )
-    parser.add_argument(
-        "-nupdb", "--noupdatedb",
-        action="store_true", dest="noupdatedb", default=False,
-        help = 'do not update local database, only update local data from remote site'
-    )
-    parser.add_argument(
-        "-o", "--override-remote",
-        action="store", dest="overrideremote", default=False,
-        help = 'override remote settings for testing purpose'
-    )
-    parser.add_argument(
-        "-r", "--reset",
-        action="store_true", dest="reset", default=False,
-        help = 'reset skeleton and projects path'
-    )
-    parser.add_argument(
-        "-s", "--svn_add",
-        action="store_true", dest="svn_add", default=True,
-        help = 'Add the new project to svn (local procets will not be added), default = True'
-    )
-    parser.add_argument(
-        "-td", "--transferdocker",
-        action="store_true", dest="transferdocker", default=False,
-        help = 'transfer data from master to slave using docker'
-    )
-    parser.add_argument(
+    parser_remote.add_argument(
         "-tl", "--transferlocal",
         action="store_true", dest="transferlocal", default=False,
         help = 'transfer data from master to slave using shell commands'
-    )
-    parser.add_argument(
-        "-u", "--dataupdate",
-        action="store_true", dest="dataupdate", default=False,
-        help = 'update local data from remote server'
-    )
-    parser.add_argument(
-        "-ud", "--dataupdate_docker",
-        action="store_true", dest="dataupdate_docker", default=False,
-        help = 'update local data from remote server into local docker'
-    )
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true", dest="verbose", default=False,
-        help="be verbose")
-
-    # ----------------------------------
-    # rpc stuff
-    # ----------------------------------
-    parser.add_argument("-dbh", "--dbhost",
+    )    
+    # -----------------------------------------------
+    # manage rpc stuff
+    # -----------------------------------------------
+    parser_remote_s = parser_remote.add_subparsers(title='remote commands', dest="rpc_commands")
+    parser_rpc = parser_remote_s.add_parser('r', help='the option rpc --rpc has the following subcommands', parents=[parent_parser])
+    parser_rpc.add_argument("-dbh", "--dbhost",
                     action="store", dest="dbhost", default='localhost',
                     help="define host default localhost")
-    parser.add_argument("-rpch", "--rpchost",
+    parser_rpc.add_argument("-rpch", "--rpchost",
                     action="store", dest="rpchost", default='localhost',
                     help="define rpchost (where odoo runs) default localhost")
-    parser.add_argument("-db", "--dbname",
+    parser_rpc.add_argument("-db", "--dbname",
                     action="store", dest="dbname", default='',
                     help="define database default ''")
-    parser.add_argument("-dbu", "--dbuser",
+    parser_rpc.add_argument("-dbu", "--dbuser",
                     action="store", dest="dbuser", default=DB_USER,
                     help="define user to log into db default %s" % DB_USER)
-    parser.add_argument("-rpcu", "--rpcuser",
+    parser_rpc.add_argument("-rpcu", "--rpcuser",
                     action="store", dest="rpcuser", default='admin',
                     help="define user to log into odoo default admin")
-    parser.add_argument("-p", "--dbpw",
+    parser_rpc.add_argument("-p", "--dbpw",
                     action="store", dest="dbpw", default='admin',
                     help="define password to log into db default 'admin'")
-    parser.add_argument("-P", "--rpcpw",
+    parser_rpc.add_argument("-P", "--rpcpw",
                     action="store", dest="rpcpw", default='admin',
                     help="define password for odoo user default 'admin'")
-    parser.add_argument("-PO", "--port",
+    parser_rpc.add_argument("-PO", "--port",
                     action="store", dest="rpcport", default=8069,
                     help="define rpc port default 8069")
-    parser.add_argument("-dbp", "--dbport",
+    parser_rpc.add_argument("-dbp", "--dbport",
                     action="store", dest="dbport", default=5432,
                     help="define db port default 5432")
-
-    # ----------------------------------
-    # docker stuff
-    # ----------------------------------
-    parser.add_argument("-ddbuser", "--dockerdbuser",
-                    action="store", dest="dockerdbuser", default='odoo',
-                    help="user to access db in a docker, default odoo")
-
-    parser.add_argument("-ddbpw", "--dockerdbpw",
-                    action="store", dest="dockerdbpw", default='odoo',
-                    help="password to access db in a docker, default odoo")
-
-
+    
     #(opts, args) = parser.parse_args()
     opts = parser.parse_args()
     # is there a valid option?
