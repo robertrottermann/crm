@@ -1,0 +1,7 @@
+DOCKER.txt
+----------
+
+update docker image:
+    docker pull IMAGENAME
+    then restart container
+    

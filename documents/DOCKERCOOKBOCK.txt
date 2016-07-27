@@ -1,0 +1,53 @@
+DOCKERCOOKBOOK.txt
+------------------
+recipes to use docker with odoo instances.
+
+recipies:
+    - create a docker container with postgres
+    - remove all images/containers/volumes
+    - access local docker db of site hugo using psql
+    - create dbdumper image
+    - update docker image
+
+create a docker container with postgres
+---------------------------------------
+
+    docker run -d -e POSTGRES_USER=odoo -e POSTGRES_PASSWORD=odoo --name db postgres
+
+
+remove all images/containers/volumes:
+-------------------------------------
+    containers:
+        docker rm $(docker ps -q -a
+        docker rm -f $(docker ps -q -a # force
+    images:
+        docker rmi  $(docker images -q)
+        docker rmi -f $(docker images -q) # force
+    volumes:
+        docker volume rm $(docker volume ls -q)
+
+
+access local docker db of site hugo using psql:
+-----------------------------------------------
+
+    psql -h 172.17.0.2 -d hugo -U odoo
+
+
+create dbdumper image:
+----------------------
+    to be able to do datatransfer to a databse within docker, we need a dbdumer Image
+    this can be created as follows:
+
+      cd dumper
+      # make sure that the ubuntu version used in the dockerfile
+      # employs the same postgres version, as the one running in the container named 'db'
+      docker build  -t dbdumper . # this creates the image
+      test it:
+          docker run -v /root/odoo_instances:/mnt/sites --rm=true --link db:db -it dbdumper -h
+
+
+update docker image:
+--------------------
+    update docker image:
+        docker pull IMAGENAME
+        then restart container

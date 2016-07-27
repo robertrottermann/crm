@@ -1,0 +1,157 @@
+steps to create sites
+---------------------
+create directory:
+    mkdir /root/odoo_instances
+change into it:
+    cd /root/odoo_instances
+check out odoo repository:
+    svn co svn://svn.redcor.net/redcor/projects/odoo
+fetch sites directoryies:
+    odoo/odoo/updatesites.sh
+create dbdmuper image:
+    docker build  -t dbdumper .
+use dbdumber to recreate databases from db dumps:
+    docker run -v /root/odoo_instances:/mnt/sites --rm=true --link db:db -it dbdumper -r all
+
+steps to update sites:
+----------------------
+change into sites repo:
+    cd /root/odoo_instances
+update odoo repo:
+    ./up.sh
+update sites repo:
+    odoo/odoo/updatesites.sh
+update a running site SITENAME:
+    stop site:
+        docker stop SITENAME
+    update the local db:
+        docker run -v /root/odoo_instances:/mnt/sites --rm=true --link db:db -it dbdumper -rdocker run -v /root/odoo_instances:/mnt/sites --rm=true --link db:db -it dbdumper -r SITENAME
+    restart site:
+        docker start SITENAME
+
+
+prepare directories for site holla:
+-----------------------------------
+    DIR=NAME_OFF_THE_SITE; for x in "addons" "etc" "dump" "filestore"; do mkdir odoo_instances/$DIR/$x -p; done
+
+After creating site:
+    adapt default database in $SITENAME/etc/
+
+
+
+
+creating temporary container that dumps db contents:
+----------------------------------------------------
+docker run --volumes-from db -v $(pwd):/backup ubuntu tar cvf /backup/backup.tar /db
+
+docker run   \
+    -v /root/odoo_instances/ecassoc/dump:/mnt/dump \
+    --link db:db -rm -it \
+    dbdumper \
+    bash
+
+um dumperdocker anzulegen:
+--------------------------
+docker build  -t dbdumper .
+docker run -v /root/odoo_instances:/mnt/sites --rm=true --link db:db -it dbdumper -h
+
+    um es zu nutzen:
+        psql -h db -U odoo
+
+db:
+---
+docker run -d \
+    -e POSTGRES_USER=odoo \
+    -e POSTGRES_PASSWORD=odoo \
+    --name db postgres
+
+redcorsites:
+------------
+    RedcorSiteOnFrieda$99
+    email:
+        redcorsite@redcor.ch
+        RedcorSiteOnFrieda$99
+
+redcorkmu:
+----------
+docker run -p 127.0.0.1:8073:8069 \
+    -v /root/odoo_instances/redcorkmu/etc:/etc/odoo
+    -v /root/odoo_instances/redcorkmu/addons:/mnt/extra-addons
+    --name redcorkmu -d --link db:db -t odoo:9.0
+
+ecassoc:
+--------
+docker run -p 127.0.0.1:8074:8069 \
+    -v /root/odoo_instances/ecassoc/etc:/etc/odoo \
+    -v /root/odoo_instances/ecassoc/addons:/mnt/extra-addons \
+    -v /root/odoo_instances/ecassoc/dump:/mnt/dump \
+    -v /root/odoo_instances/ecassoc/filestore:/var/lib/odoo/filestore \
+    --name ecassoc -d --link db:db -t odoo:9.0
+
+    db:
+        ecassoc
+        EcAssocOnFrieda$99
+
+    email:
+        for outgoing server:
+            mail.redcor.ch
+            security:tls
+            ecassoc@redcor.ch
+            ecassoc$99
+        for incoming server:
+            ecasincomming@redcor.ch
+            ecasincomming$99
+
+docmarolf:
+----------
+docker run -p 127.0.0.1:8075:8069 \
+    -v /root/odoo_instances/docmarolf/etc:/etc/odoo \
+    -v /root/odoo_instances/docmarolf/addons:/mnt/extra-addons \
+    -v /root/odoo_instances/docmarolf/dump:/mnt/dump \
+    -v /root/odoo_instances/docmarolf/filestore:/var/lib/odoo/filestore \
+    --name docmarolf -d --link db:db -t odoo:9.0
+
+    db:
+        docmarolf
+        DocMarolfOnFrieda$51
+
+    email:
+        for outgoing server:
+            mail.redcor.ch
+            security:tls
+            cardiocare@docmarolf.ch
+            pw:Cardiocare$Docm
+        for incoming server:
+            cardiolog@docmarolf.ch
+            Cardiolog$Docm
+
+breitsch:
+---------
+docker run -p 127.0.0.1:8070:8069 \
+    --name breitschtraeff --link db:db -t odoo
+
+
+urgestein:
+----------
+http://urgestein.redcor.ch/en_US/web/login
+urgestein91
+
+
+joga
+verkauf
+harito
+
+
+dropdb: database removal failed: ERROR:  database "ecassoc" is being accessed by other users
+DETAIL:  There are 9 other sessions using the database.
+root@250c210584ad:/# psql -U odoo -h db
+Password for user odoo:
+psql (9.4.5, server 9.4.4)
+Type "help" for help.
+
+odoo=# select pg_terminate_backend(pid) from pg_stat_activity where datname='ecassoc';
+ pg_terminate_backend
+
+become root in a containe:
+1880  PID=$(docker inspect --format {{.State.Pid}} ecassoc)
+1881  nsenter --target $PID --mount --uts --ipc --net --pid

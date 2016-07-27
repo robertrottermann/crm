@@ -1,0 +1,4 @@
+docker-py
+pycrypto
+psycopg2
+odoorpc

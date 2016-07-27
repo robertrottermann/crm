@@ -1,0 +1,52 @@
+#!/usr/bin/python
+# -*- encoding: utf-8 -*-
+
+SITES_L = {
+    "mysite" : {
+        'site_name' : 'mysite',
+        'servername' : 'mysite',
+        'remote_url' : '144.76.184.20', #frieda, please adapt
+        'remote_path' : '/root/odoo_instances',
+        'remote_user' : 'root',
+        'odoo_port'   : '??',
+        'odoo_admin_pw' : '',
+        'odoo_version' : '9.0',
+        'odoo_image_version' : 'odoo:9.0',
+        'smtp_server' : 'mail.redcor.ch',
+        'db_name' : 'mysite',
+        'pg_password' : 'odoo',
+        'email_user_incomming' : '',
+        'email_pw_incomming' : '',
+        'email_user_outgoing' : '',
+        'email_pw_outgoing' : '',
+        'addons' : [
+            {
+                # ***********************************
+                # please clean out lines not needed !
+                # ***********************************
+                ## what type is the repository
+                #'type' : 'git',
+                ## what is the url to the repository
+                #'url' : 'ssh://git@gitlab.redcor.ch:10022/agenda2go/docmarolf_calendar.git',
+                ## branch is the repositories branch to be used. default 'master'
+                #'branch' : 'branch.xx',
+                ## what is the target (subdirectory) within the addons folder
+                #'target' : 'docmarolf_calendar',
+                ## group what group should be created within the target directory.
+                ## see http://docs.anybox.fr/anybox.recipe.odoo/1.9.1/configuration.html#addons
+                #'group' : 'somegroup',
+                ## subdir is used to only use a sudirectory from the repository
+                #'subdir : 'somesubdir',
+            },
+        ],
+        'pip' : [
+        ],
+        # slave info: is this site slave of a master site from which it will be updated
+        'slave_info' : {
+            # # master_site ist the name of the mastersite
+            # "master_site" : '',
+            # # master_domain is the domain from which the master is copied
+            # "master_domain" : 'localhost',
+        }        
+    },
+}

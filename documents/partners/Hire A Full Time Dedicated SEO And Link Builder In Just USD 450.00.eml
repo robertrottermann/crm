@@ -1,0 +1,234 @@
+Return-Path: <rajeshchsuagh@outlook.com>
+Delivered-To: robert@redcor.ch
+Received: by susanne.redcor.ch (Postfix, from userid 10002)
+	id 5BC58A0EBF; Wed,  4 May 2016 13:15:39 +0200 (CEST)
+X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on susanne.redcor.ch
+X-Spam-Level: 
+X-Spam-Status: No, score=-0.0 required=5.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,DRUGS_ERECTILE,FREEMAIL_FROM,HTML_MESSAGE,
+	RCVD_IN_MSPIKE_H3,RCVD_IN_MSPIKE_WL,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
+Received-SPF: Pass (sender SPF authorized) identity=mailfrom; client-ip=65.55.90.22; helo=snt004-omc1s11.hotmail.com; envelope-from=rajeshchsuagh@outlook.com; receiver=info@redcor.ch 
+Received: from SNT004-OMC1S11.hotmail.com (snt004-omc1s11.hotmail.com [65.55.90.22])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by susanne.redcor.ch (Postfix) with ESMTPS id 3CC5DA0D72
+	for <info@redcor.ch>; Wed,  4 May 2016 13:15:36 +0200 (CEST)
+Received: from IND01-BO1-obe.outbound.protection.outlook.com ([65.55.90.7]) by SNT004-OMC1S11.hotmail.com over TLS secured channel with Microsoft SMTPSVC(7.5.7601.23008);
+	 Wed, 4 May 2016 04:15:36 -0700
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=outlook.com;
+ s=selector1; h=From:To:Date:Subject:Message-ID:Content-Type:MIME-Version;
+ bh=HuRvaEDHBLTCdl+ZHI9b8CvRDfO5sEeqauVvbsAqFdc=;
+ b=Ebpsur8uXSqdHDeOqORZlOlEwy2aPSIC50mkVJ0MtY5M81cJCLMqHa8lJmljJ3/tYi2EVGF70A3fnw+Xir6rnZyPDI45mEOo/6o9GBLU3py0g1yhV61qZJI5/c/9SQ0QO+JCUGJ++Htp+yGFYSz+LljZXDEcMW0/1B1PUQ3uuYIzfX+bfZ9wUOW2m8gDT3qOcOgZ1jnHiasLbbdo0ims6+dLaaqTnypNMoLb3LbSqCDGAqxbRnLu2IDxDfQIS8g8ZAk1Vvd6MwbkKcDVEunTgwP7CZ3n6wON83jnMs37BGSrAtxj3YrUFlEH18t8LdOAgFuZuTm00AsvMCtKzegrQw==
+Received: from BO1IND01FT005.eop-IND01.prod.protection.outlook.com
+ (10.152.202.52) by BO1IND01HT013.eop-IND01.prod.protection.outlook.com
+ (10.152.202.99) with Microsoft SMTP Server (TLS) id 15.1.477.4; Wed, 4 May
+ 2016 11:15:15 +0000
+Received: from MAXPR01MB0458.INDPRD01.PROD.OUTLOOK.COM (10.152.202.58) by
+ BO1IND01FT005.mail.protection.outlook.com (10.152.202.120) with Microsoft
+ SMTP Server (TLS) id 15.1.477.4 via Frontend Transport; Wed, 4 May 2016
+ 11:14:49 +0000
+Received: from MAXPR01MB0458.INDPRD01.PROD.OUTLOOK.COM ([10.164.151.133]) by
+ MAXPR01MB0458.INDPRD01.PROD.OUTLOOK.COM ([10.164.151.133]) with mapi id
+ 15.01.0485.011; Wed, 4 May 2016 11:14:46 +0000
+From: Rajeshch Suagh <rajeshchsuagh@outlook.com>
+To: "info@axianet.ch" <info@axianet.ch>
+Subject: Hire A Full Time Dedicated SEO And Link Builder In Just USD 450.00
+Thread-Topic: Hire A Full Time Dedicated SEO And Link Builder In Just USD
+ 450.00
+Thread-Index: AQHRpfYhDuUJKxxaaEqhWNlbeTBewg==
+Date: Wed, 4 May 2016 11:14:46 +0000
+Message-ID: <MAXPR01MB04587149449AC3E2D8D1CCD3B87B0@MAXPR01MB0458.INDPRD01.PROD.OUTLOOK.COM>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+authentication-results: spf=softfail (sender IP is 25.152.202.58)
+ smtp.mailfrom=outlook.com; service-ag.ch; dkim=none (message not signed)
+ header.d=none;service-ag.ch; dmarc=fail action=none header.from=outlook.com;
+received-spf: SoftFail (protection.outlook.com: domain of transitioning
+ outlook.com discourages use of 25.152.202.58 as permitted sender)
+x-tmn: [uDw9tleDB5AjRAdO2IN5OY3R2fCZ9EIDjxoTssoXmUU=]
+x-eopattributedmessage: 0
+x-forefront-antispam-report: CIP:25.152.202.58;IPV:NLI;CTRY:GB;EFV:NLI;SFV:NSPM;SFS:(10019020)(98900003);DIR:OUT;SFP:1102;SCL:1;SRVR:BO1IND01HT013;H:MAXPR01MB0458.INDPRD01.PROD.OUTLOOK.COM;FPR:;SPF:SoftFail;MLV:ovr;MX:1;A:1;LANG:en;
+x-ms-office365-filtering-correlation-id: 4b4042ee-6254-4f41-e560-08d3740d4cee
+x-microsoft-antispam: UriScan:;BCL:0;PCL:0;RULEID:(5061506196)(5061507196);SRVR:BO1IND01HT013;
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(432015012)(82015046);SRVR:BO1IND01HT013;BCL:0;PCL:0;RULEID:;SRVR:BO1IND01HT013;
+x-forefront-prvs: 093290AD39
+Content-Type: multipart/alternative;
+	boundary="_000_MAXPR01MB04587149449AC3E2D8D1CCD3B87B0MAXPR01MB0458INDP_"
+MIME-Version: 1.0
+X-OriginatorOrg: outlook.com
+X-MS-Exchange-CrossTenant-originalarrivaltime: 04 May 2016 11:14:46.1305
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Internet
+X-MS-Exchange-CrossTenant-id: 84df9e7f-e9f6-40af-b435-aaaaaaaaaaaa
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BO1IND01HT013
+X-OriginalArrivalTime: 04 May 2016 11:15:36.0110 (UTC) FILETIME=[4820C4E0:01D1A5F6]
+
+--_000_MAXPR01MB04587149449AC3E2D8D1CCD3B87B0MAXPR01MB0458INDP_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+Hi,
+
+My name is Monika Kajal, Business Development Executive.
+
+I visited your website and observed that you are an online service provider=
+. If you would be interested in outsourcing your campaign to us, We would b=
+e happy to execute the same for you on a white label basis.
+
+Please select us because we provide affordable and very unique SEO And link=
+ building service. You can hire a SEO And link builder in just USD 450.00/m=
+onth working full time, 22 days a month for you. Link builder And SEO would=
+ work only for you on your own instruction and links will be created as per=
+ your requirement. Also our link builders have good SEO Knowledge. Our link=
+ builder can also do SEO work on your websites. It's not the same as what m=
+ost SEO companies do:
+
+
+Some benefits of hiring our full time link builder
+
+Its affordable with cost as low as USD 450 a month.
+1.  Hired SEO And Link Builder would work Full Time, 22 Days a month.
+2.  No set up cost.
+3.  No infrastructure cost.
+4.  Link builder helps your site indexing in Search Engine (Google, yahoo a=
+nd Bing).
+5.  Get theme based one way links along with directory submissions and soci=
+al book marking.
+6.  No per link cost
+7.  Links with relevant "Keywords" in the Anchor Text
+8.  Links from industry-relevant pages.
+9.  Links from industry specific article pages
+10. Link to your site should not be through a "redirect" script
+11. No JavaScript links
+12. No links from "framed" pages
+13. No "flash" embedded links
+14. No paid or time-bound links
+15. No links from Link Farms
+16. No links from FFA (Free-For-All) link networks
+17. No links from pornographic, casino, Viagra and other sites containing o=
+ffensive content
+18. Full data sheet of links created at the end of each month
+19. Only relevant established links are counted in the final report
+20. No links text nude
+21. All the links will be Google cached and indexed pages.
+22. Link Builder would work only for you 22 days a month.
+
+
+Do let me know your views and I would be happy to provide further details.
+
+
+Kind Regards,
+
+Monika Kajal
+Business Development Executive
+
+Note: - We are not spamming, we keep on sending out these emails to all tho=
+se people whom we find eligible of using our services. To unsubscribe from =
+future mails (i.e., to ensure that we do not contact you again for this mat=
+ter), please send a blank mail, with NO as the Subject, so that we shall ad=
+d you to our "Do Not Contact Again" list.
+
+
+--_000_MAXPR01MB04587149449AC3E2D8D1CCD3B87B0MAXPR01MB0458INDP_
+Content-Type: text/html; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<html>
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
+1">
+<style type=3D"text/css" style=3D"display:none;"><!-- P {margin-top:0;margi=
+n-bottom:0;} --></style>
+</head>
+<body dir=3D"ltr">
+<div id=3D"divtagdefaultwrapper" style=3D"font-size:12pt;color:#000000;back=
+ground-color:#FFFFFF;font-family:Calibri,Arial,Helvetica,sans-serif;">
+<p><span id=3D"ms-rterangepaste-start"></span></p>
+<div>Hi,</div>
+<div><br>
+</div>
+<div>My name is Monika Kajal, Business Development Executive.</div>
+<div><br>
+</div>
+<div>I visited your website and observed that you are an online service pro=
+vider. If you would be interested in outsourcing your campaign to us, We wo=
+uld be happy to execute the same for you on a white label basis.</div>
+<div><br>
+</div>
+<div>Please select us because we provide affordable and very unique SEO And=
+ link building service. You can hire a SEO And link builder in just USD 450=
+.00/month working full time, 22 days a month for you. Link builder And SEO =
+would work only for you on your
+ own instruction and links will be created as per your requirement. Also ou=
+r link builders have good SEO Knowledge. Our link builder can also do SEO w=
+ork on your websites. It's not the same as what most SEO companies do:</div=
+>
+<div><br>
+</div>
+<div><br>
+</div>
+<div>Some benefits of hiring our full time link builder</div>
+<div><br>
+</div>
+<div>Its affordable with cost as low as USD 450 a month.</div>
+<div>1. &nbsp;Hired SEO And Link Builder would work Full Time, 22 Days a mo=
+nth.</div>
+<div>2. &nbsp;No set up cost.</div>
+<div>3. &nbsp;No infrastructure cost.</div>
+<div>4. &nbsp;Link builder helps your site indexing in Search Engine (Googl=
+e, yahoo and Bing).</div>
+<div>5. &nbsp;Get theme based one way links along with directory submission=
+s and social book marking.</div>
+<div>6. &nbsp;No per link cost</div>
+<div>7. &nbsp;Links with relevant &quot;Keywords&quot; in the Anchor Text</=
+div>
+<div>8. &nbsp;Links from industry-relevant pages.</div>
+<div>9. &nbsp;Links from industry specific article pages</div>
+<div>10. Link to your site should not be through a &quot;redirect&quot; scr=
+ipt</div>
+<div>11. No JavaScript links</div>
+<div>12. No links from &quot;framed&quot; pages</div>
+<div>13. No &quot;flash&quot; embedded links</div>
+<div>14. No paid or time-bound links</div>
+<div>15. No links from Link Farms</div>
+<div>16. No links from FFA (Free-For-All) link networks</div>
+<div>17. No links from pornographic, casino, Viagra and other sites contain=
+ing offensive content</div>
+<div>18. Full data sheet of links created at the end of each month</div>
+<div>19. Only relevant established links are counted in the final report</d=
+iv>
+<div>20. No links text nude</div>
+<div>21. All the links will be Google cached and indexed pages.</div>
+<div>22. Link Builder would work only for you 22 days a month.</div>
+<div><br>
+</div>
+<div><br>
+</div>
+<div>Do let me know your views and I would be happy to provide further deta=
+ils.</div>
+<div><br>
+</div>
+<div><br>
+</div>
+<div>Kind Regards,</div>
+<div><br>
+</div>
+<div>Monika Kajal</div>
+<div>Business Development Executive</div>
+<div>&nbsp;</div>
+<div>Note: - We are not spamming, we keep on sending out these emails to al=
+l those people whom we find eligible of using our services. To unsubscribe =
+from future mails (i.e., to ensure that we do not contact you again for thi=
+s matter), please send a blank mail,
+ with NO as the Subject, so that we shall add you to our &quot;Do Not Conta=
+ct Again&quot; list.</div>
+<span id=3D"ms-rterangepaste-end"></span><br>
+<p></p>
+</div>
+</body>
+</html>
+
+--_000_MAXPR01MB04587149449AC3E2D8D1CCD3B87B0MAXPR01MB0458INDP_--

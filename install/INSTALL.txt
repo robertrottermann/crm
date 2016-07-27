@@ -1,0 +1,281 @@
+INSTALL.txt
+-----------
+
+------------
+PREPARATION:
+------------
+    check out odoo management tools into working dir odoo_instances
+    ---------------------------------------------------------------
+    vim
+
+    create private/public key pair
+    ------------------------------
+    as normal user issue the following command
+        ssh-keygen -t rsa
+    just accept all prompts with enter
+
+
+    the following modules must be installed (as user root):
+    -------------------------------------------------------
+        postgresql should be up and running
+        sudo apt-get install postgresql postgresql-contrib
+
+        install libraries:
+            apt-get -y install libfreetype6-dev libjpeg8-dev liblcms2-dev libldap2-dev libsasl2-dev libssl-dev libffi-dev \
+            libtiff5-dev libwebp-dev libxml2-dev libxslt1-dev node-less postgresql-server-dev* python-dev \
+            python-tk tcl8.6-dev tk8.6-dev zlib1g-dev postgresql-client-9.5 python-virtualenv git vim npm nodejs-legacy
+
+    create a virtual env:
+    ---------------------
+        change to target directory:
+            cd ~/odoo_instances # this script assumes this directory as base
+
+        create virtual environment:
+            virtualenv python
+            python/bin/pip install -U setuptools
+
+    as normal user:
+    ---------------
+        install lessc:
+            curl -sL https://deb.nodesource.com/setup_0.12 | sudo bash -
+            sudo npm install -g npm  #(to update npm)
+            sudo npm install -g less
+            sudo npm install -g less-plugin-clean-css
+            
+
+    add yourself as postgres superuser to the database:
+    ---------------------------------------------------
+        sudo -u postgres psql -e --command "CREATE USER $USER WITH SUPERUSER PASSWORD 'admin'"
+
+    create private/public key pair
+    ------------------------------
+    as normal user issue the following command
+        ssh-keygen -t rsa
+
+    copy the public key to .ssh/autorized_keys on the machine/homedir from
+    which you will copy livedata
+----------------
+END PREPARATION:
+----------------
+
+-----------------------
+create ~/odoo_instances
+-----------------------
+    As normal user:
+
+    check out repository:
+        in your home directoryy execute the following commands:
+        svn co svn://svn.redcor.net/redcor/odoo_instances
+
+    set up environment:
+        cd odoo_instances
+        virtualenv python
+
+    install needed modules:
+        bin/pip install -r install/requirements.txt
+
+    add local config data:
+    ----------------------
+        to be able to use the scripts in bin/ there needs to exist a file
+        localdata.py with the following settings. There is a file localdata.py.in
+        which you can copy and adapt.
+            cp localdata.py.in localdata.py
+
+        localdata.py has this content which should be adapted:
+            # db_user is the user used to access the local postgres server
+            db_user = 'robert'
+            # db_password ist used to login db_user
+            db_password = 'odoo'
+            # apache_path is used to create virtual sites
+            apache_path = '/etc/apache2'
+            # remote_user_dic is used to access the remote server to update the local db
+            # it is a dic with the ip of the remote server as key
+            # which ip to use is read from sytes.py
+            remote_user_dic {
+                '144.76.184.20' : {
+                    'user' : 'root',
+                    'remote_path' : '/root/odoo_instances'
+                    # remote_pw is used as credential for the remote user. normaly unset
+                    # to use public keys.
+                    remote_pw : '',
+                }
+            }
+
+        see sample localdata.py at the end of this text.
+
+    start for the first time:
+    -------------------------
+        when you start bin/c.sh or bin/u.sh for the first time you are asked
+        to provide the path to where the local projects should be created:
+        Accepting the provided default is just fine.
+        !!attention!! the folder needs to exist.
+
+---------------------------
+END create ~/odoo_instances
+---------------------------
+
+--------------
+handling sites
+--------------
+    defining sites:
+    ---------------
+        the sites are described in three dictionaries (all of them in odoo_sites)
+        - sites.py
+            here the remote sites are described
+        - sites_local.py:
+            here you can have local sites described that are not on the
+            remote server.
+            there is a template file local_sites.py.in which you can copy.
+        - sites_pw.py:
+            here are the passwords for odoo and the mail accounts
+            this file is not under version control and not distributed
+
+        to manage the sites there are two bash scripts in bin/:
+            - bin/c.sh
+                this script is used to create local sites
+                if available these local sites use the data copied from
+                the remote live servers.
+                bin/c.sh -h to show its help
+            - bin/u.sh
+                this script is used to copy the data from the remote
+                life servers
+                bin/u.sh -h to show its help
+
+        help:
+        -----
+            bin/c.sh -h
+            bin/u.sh -h
+
+
+    creating local sites
+    --------------------
+    bin/c.sh is used to create local sites. To be able to do so, the site needs
+    an entry either in sites.py or sites_local.py.
+    You can list the possible sites with:
+        bin/c.sh -l
+        the output is something like this:
+            key2gont
+            odoodev (local)
+            redcorkmu
+            rederpdemo
+
+    Sites defined in sites_local.py are marked with (local).
+
+    To create a site you have to follow three steps:
+        - create the site:
+            bin/c.sh -n SITENAME -c
+        - change to the sites home and prepare the buildout
+            (assuming you entered ~/projects as projects home)
+            cd ~/projects/SITENAME/SITENAME
+            bin/dosetup.py
+            (you get error complaining this is not a working copy,
+            if ~/projects is not managed by subversion. ignore them)
+        - run the buildout:
+            bin/buildout
+
+    copy remote data to local_sites
+    -------------------------------
+    To be able to run a local site with life data you have to set up yourself
+    as a postgres superuser:
+        add yourself as postgres superuser to the database:
+            sudo -u postgres psql -e --command "CREATE USER $USER WITH SUPERUSER PASSWORD 'admin'"
+
+
+   to copy remote data run:
+        ~/odoo_instances$ bin/u.sh -n SITENAME
+
+------------------
+END handling sites
+------------------
+
+-------------------------------
+godies
+-------------------------------
+The setupscript bin/dosetup.py you have to run in each local site
+adds some aliases to your ~/.bash_aliases file. they start with the
+first 4 characters to the site name:
+so rederpdemo produces:
+    rede
+    redehome
+
+try it out ..
+
+some usefull postgres commands:
+-------------------------------
+    list postgres user and change password
+    --------------------------------------
+    become root
+        su
+    become user postgres
+        su postgres
+    start psql
+        psql
+    list users
+        \du
+    change password of user robert to be admin
+        ALTER USER robert WITH PASSWORD 'admin'
+
+if you ever want to change change the password of an odoo user:
+    su
+    su postgres
+    psql
+    \connect DBNAME         # connect to db DBNAME
+    # list odoo users
+    # password will only be set until user is logged in successfully the first time
+    select login, password, password_crypt from res_users;
+    # change password of odoo user admin
+    update res_users set password='admin' where login='admin';
+
+subversion:
+-----------
+    add the following line to ~/.subversion/config
+    global-ignores = *.o *.lo *.la *.al .libs *.so *.so.[0-9]* *.a *.pyc *.pyo *.rej *~ #*# .#* .*.swp .DS_Store *.egg-info
+
+--------------------
+sample localdata.py:
+--------------------
+    this localdata.py works for accessing files on frieda (144.76.184.20)
+    as local user nirmala, and as remote user odooprojects
+
+    # db_user is the used to access the local postgres server
+    DB_USER = 'nirmala'
+    # db_password ist used to login db_userdb_user
+    DB_PASSWORD = 'odoo'
+    # apache_pathis used to create virtual sites    if you ever want to change change the password of an odoo user:
+            su
+            su postgres
+            psql
+            \connect DBNAME         # connect to db DBNAME
+            # list odoo users
+            # password will only be set until user is logged in successfully the first time
+            select login, password, password_crypt from res_users;
+            # change password of odoo user admin
+            update res_users set password='admin' where login='admin';
+
+    APACHE_PATH = '/etc/apache2'
+    # remote_user_dic is used to access the remote server to update the local db
+    # it is a dic with the ip of the remote server as key
+    # which ip to use is read from sytes.py
+    REMOTE_USER_DIC = {
+        '144.76.184.20' : {
+            'remote_user' : 'odooprojects',
+            'remote_path' : '/home/odooprojects/odoo_instances',
+            # remote_pw is used as credential for the remote user. normaly unset
+            # to use public keys.
+            'remote_pw' : '',
+        },
+    }
+
+
+
+master password:
+----------------
+check ur odoo8 config file named as: odoo-server.conf. it basically inside of your etc folder.
+
+find and open it.
+
+admin_passwd = admin
+
+here admin is your master password. try this.
+
+EDIT:  If you have changed the master password from the user interface, it is stored in a resource file called .openerp_serverrc in the home directory of the user running the server/service.

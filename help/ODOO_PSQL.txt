@@ -1,0 +1,11 @@
+if you ever want to change change the password of an odoo user:
+---------------------------------------------------------------
+    su
+    su postgres
+    psql
+    \connect DBNAME         # connect to db DBNAME
+    # list odoo users
+    # password will only be set until user is logged in successfully the first time
+    select login, password, password_crypt from res_users;
+    # change password of odoo user admin
+    update res_users set password='admin' where login='admin';
