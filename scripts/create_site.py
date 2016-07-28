@@ -8,7 +8,8 @@ from pprint import pprint
 
 #from optparse import OptionParser
 import argparse
-from argparse import ArgumentParser #, _SubParsersAction
+from ruamel.std.argparse import ArgumentParser, set_default_subparser
+#from argparse import ArgumentParser #, _SubParsersAction
 import subprocess
 from subprocess import PIPE
 
@@ -29,7 +30,14 @@ import scripts.vcs
 from scripts.name_completer import SimpleCompleter
 from scripts.update_local_db import DBUpdater
 
+class OptsWrapper(object):
+    def __init__(self, d):
+        self.d = d
+    def __getattr__(self, key):
+        return hasattr(self.d, key) and getattr(self.d, key)
+
 def main(opts):
+
     if NEED_BASEINFO or opts.reset:
         update_base_info(BASE_INFO_FILENAME, BASE_DEFAULTS)
         return
@@ -389,6 +397,7 @@ if __name__ == '__main__':
                     help="define db port default 5432")
 
     #(opts, args) = parser.parse_args()
-    opts = parser.parse_args()
+    parser.set_default_subparser('create')
+    opts = OptsWrapper(parser.parse_args())
     # is there a valid option?
     main(opts) #opts.noinit, opts.initonly)

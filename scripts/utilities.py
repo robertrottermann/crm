@@ -123,8 +123,8 @@ def check_name(opts):
                 return name
     # no name
     # do we need a name
-    nn = [n for n in need_name if opts.__dict__[n]]
-    nnn = [n for n in no_need_name if opts.__dict__[n]]
+    nn = [n for n in need_name if opts.__dict__.get(n)]
+    nnn = [n for n in no_need_name if opts.__dict__.get(n)]
     if not nn or nn == ['svn_add']:
         if nnn:
             return True

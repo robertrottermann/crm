@@ -2,3 +2,4 @@ docker-py
 pycrypto
 psycopg2
 odoorpc
+ruamel.std.argparse
