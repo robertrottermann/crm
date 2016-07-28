@@ -1,0 +1,4 @@
+**/*.pyc
+*.wp?
+python
+localdata.py
