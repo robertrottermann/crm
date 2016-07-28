@@ -141,6 +141,26 @@ class NameAction(argparse.Action):
         print '%r %r %r' % (namespace, values, option_string)
         setattr(namespace, self.dest, values)
 
+class _HelpAction(argparse._HelpAction):
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser.print_help()
+
+        # retrieve subparsers from parser
+        subparsers_actions = [
+            action for action in parser._actions
+            if isinstance(action, argparse._SubParsersAction)]
+        # there will probably only be one subparser_action,
+        # but better save than sorry
+        for subparsers_action in subparsers_actions:
+            # get all subparsers and print help
+            for choice, subparser in subparsers_action.choices.items():
+                print("Subparser '{}'".format(choice))
+                print(subparser.format_help())
+
+        parser.exit()
+
+
 if __name__ == '__main__':
     usage = "create_system.py is tool to create and maintain local odoo developement environment\n" \
     "**************************\n" \
@@ -156,7 +176,7 @@ if __name__ == '__main__':
     "localdata.py: It contains the name and password of the local postgres user. not managed by svn\n" \
     "**************************\n" \
     "\n-h for help on usage"
-    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser = argparse.ArgumentParser(usage=usage, add_help=False)
     parent_parser.add_argument(
         "-n", "--name",
         action=NameAction, dest="name", default=False,
@@ -167,17 +187,18 @@ if __name__ == '__main__':
         action="store_true", dest="verbose", default=False,
         help="be verbose")
 
-    
-    parser = ArgumentParser(usage=usage)# ArgumentParser(usage=usage)
+
+    parser = ArgumentParser(add_help=False)# ArgumentParser(usage=usage)
+    parser.add_argument('--help', action=_HelpAction, help='help for help if you need some help')  # add custom help
     parser_s = parser.add_subparsers(title='subcommands', dest="subcommands")
-    parser_site   = parser_s.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
+    #parser_site   = parser_s.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
 
     # -----------------------------------------------
     # manage sites create and update sites
     # -----------------------------------------------
     #http://stackoverflow.com/questions/10448200/how-to-parse-multiple-sub-commands-using-python-argparse
-    parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
-    parser_manage = parser_site_s.add_parser('c', help='the option -m --manage-sites has the following subcommands', parents=[parent_parser])
+    #parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
+    parser_manage = parser_s.add_parser('create', help='the option -m --manage-sites has the following subcommands', parents=[parent_parser])
     parser_manage.add_argument(
         "--add-site",
         action="store_true", dest="add_site", default=False,
@@ -253,12 +274,12 @@ if __name__ == '__main__':
         action="store_true", dest="dataupdate", default=False,
         help = 'update local data from remote server'
     )
-    
+
     # -----------------------------------------------
     # support commands
     # -----------------------------------------------
-    parser_manage_s = parser_manage.add_subparsers(title='manage sites', dest="site_manage_commands")
-    parser_support= parser_manage_s.add_parser('support', help='the option -sites --support has the following subcommands', parents=[parent_parser])
+    #parser_manage_s = parser_manage.add_subparsers(title='manage sites', dest="site_manage_commands")
+    parser_support= parser_s.add_parser('support', help='the option -sites --support has the following subcommands', parents=[parent_parser])
     parser_support.add_argument(
         "-a", "--alias",
         action="store_true", dest="alias", default=False,
@@ -284,12 +305,12 @@ if __name__ == '__main__':
         action="store_true", dest="reset", default=False,
         help = 'reset skeleton and projects path'
     )
-    
+
     # -----------------------------------------------
     # manage docker
     # -----------------------------------------------
-    parser_support_s = parser_support.add_subparsers(title='docker commands', dest="docker_commands")
-    parser_docker = parser_support_s.add_parser('d', help='the option -d --docker has the following subcommands', parents=[parent_parser])
+    #parser_support_s = parser_support.add_subparsers(title='docker commands', dest="docker_commands")
+    parser_docker = parser_s.add_parser('docker', help='the option -d --docker has the following subcommands', parents=[parent_parser])
     parser_docker.add_argument(
         "-C", "--create_container",
         action="store_true", dest="create_container", default=False,
@@ -313,12 +334,12 @@ if __name__ == '__main__':
         action="store_true", dest="dataupdate_docker", default=False,
         help = 'update local data from remote server into local docker'
     )
-    
+
     # -----------------------------------------------
     # manage remote server (can be localhost)
     # -----------------------------------------------
-    parser_docker_s = parser_docker.add_subparsers(title='remote commands', dest="remote_commands")
-    parser_remote = parser_docker_s.add_parser('r', help='the option -r --remote has the following subcommands', parents=[parent_parser])
+    #parser_docker_s = parser_docker.add_subparsers(title='remote commands', dest="remote_commands")
+    parser_remote = parser_s.add_parser('remote', help='the option -r --remote has the following subcommands', parents=[parent_parser])
     parser_remote.add_argument(
         "--add-apache",
         action="store_true", dest="add_apache", default=False,
@@ -333,12 +354,12 @@ if __name__ == '__main__':
         "-tl", "--transferlocal",
         action="store_true", dest="transferlocal", default=False,
         help = 'transfer data from master to slave using shell commands'
-    )    
+    )
     # -----------------------------------------------
     # manage rpc stuff
     # -----------------------------------------------
-    parser_remote_s = parser_remote.add_subparsers(title='remote commands', dest="rpc_commands")
-    parser_rpc = parser_remote_s.add_parser('r', help='the option rpc --rpc has the following subcommands', parents=[parent_parser])
+    #parser_remote_s = parser_remote.add_subparsers(title='remote commands', dest="rpc_commands")
+    parser_rpc = parser_s.add_parser('rpc', help='the option rpc --rpc has the following subcommands', parents=[parent_parser])
     parser_rpc.add_argument("-dbh", "--dbhost",
                     action="store", dest="dbhost", default='localhost',
                     help="define host default localhost")
@@ -366,7 +387,7 @@ if __name__ == '__main__':
     parser_rpc.add_argument("-dbp", "--dbport",
                     action="store", dest="dbport", default=5432,
                     help="define db port default 5432")
-    
+
     #(opts, args) = parser.parse_args()
     opts = parser.parse_args()
     # is there a valid option?
