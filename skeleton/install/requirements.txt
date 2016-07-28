@@ -1,0 +1,7 @@
+gdata
+pysftp
+pydot
+evdev
+mock
+pyinotify
+%(pip_modules)s

@@ -1,0 +1,92 @@
+[buildout]
+develop = recipes
+part = login_info
+
+[login_info]
+##---------------------------------
+# recipe is empty
+recipe =
+##---------------------------------
+# odoo version
+odoo_version = %(odoo_version)s
+##---------------------------------
+# ist this script executed on a local computer
+# True = local
+# empty or False = remote server
+running_local = %(running_local)s
+##---------------------------------
+# should demo data be OMITED when creating the database?
+# this is of interest only when the database is created for the first time
+without_demo = all
+##---------------------------------
+# as what user are we runnin odoo locally (not on the remote server!)
+current_user = %(username)s
+##---------------------------------
+# what is the name of the local database (can be different from the remote database name)
+db_name = %(projectname)s
+##---------------------------------
+# on what host is the db running?
+# this is normally localhost (for local computer and remote server)
+# only when using docker this value MUST be set to an ip != localhost
+db_host = %(db_host)s
+##---------------------------------
+# the password to access the local database
+db_password = %(db_password)s
+##---------------------------------
+# odoo's log_db_level
+log_db_level = %(log_db_level)s
+##---------------------------------
+# admin password to access the odoo instance
+admin_passwd = %(admin_passwd)s
+##---------------------------------
+# addons_path defines where addons for this
+addons_path =
+    local %(projectname)s_addons/
+%%(site_addons)s
+##---------------------------------
+# local addons will not be copied to the server
+# they are used to add local developement addons
+#    local ../odoo-dev/my_personal_addons/
+#    local_adons =
+##---------------------------------
+# remote database is the name of the remote database we will copy
+# to the local machine
+remote_database = %(projectname)s
+##---------------------------------
+# remote user is the user as whom we will log in to the remote server
+remote_user =  %(username)s
+##---------------------------------
+# remote_url is the url used to access the remote site
+# we will access the remote machine with an url like: %(username)s@%(remote_url)s
+remote_url = %(remote_url)s
+##---------------------------------
+# remote_localhost is the url that is used on the remote server
+# to access the database on the remote server.
+# This is important when we suse docker
+# default localhost
+remote_localhost = %(remote_localhost)s
+##---------------------------------
+# user to access the database on the remote server
+# default odoo
+remote_db_user = %(remote_db_user)s
+##---------------------------------
+# password to access the database on the remote server
+pg_password = %(pg_password)s
+##---------------------------------
+# data_dir is the place on the local box, where the attachements are stored
+# it is relative to the buildout directory.
+data_dir = %(data_dir)s
+##---------------------------------
+# remote_data_dir is the place on the remote server, where the attachements are stored
+remote_data_dir = /opt/odoo/.local/share/Odoo/
+##---------------------------------
+# use_docker is a flag. if set, we collect remote data from a docker container
+# must be empty or _docker
+use_docker = _docker
+##---------------------------------
+# remote_dump_path is the path to the folder where the database dump is stored
+remote_dump_path = /home/%(projectname)s/sql_dumps/
+##---------------------------------
+# create_database is a flag whether a new local database has to be created
+# it is only taken into consideration when no local database exists
+create_database = %(create_database)s

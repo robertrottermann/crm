@@ -7,8 +7,26 @@ import logging
 from pprint import pprint
 
 #from optparse import OptionParser
-import argparse
-from ruamel.std.argparse import ArgumentParser, set_default_subparser
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+try:
+    from ruamel.std.argparse import ArgumentParser, set_default_subparser
+    import argparse
+except ImportError:
+    print '*' * 80
+    print bcolors.WARNING +bcolors.FAIL + 'please run bin/pip install -r install/requirements.txt' + bcolors.ENDC
+    print 'not all libraries are installed'
+    print '*' * 80
+    sys.exit()
+
 #from argparse import ArgumentParser #, _SubParsersAction
 import subprocess
 from subprocess import PIPE
@@ -206,7 +224,7 @@ if __name__ == '__main__':
     # -----------------------------------------------
     #http://stackoverflow.com/questions/10448200/how-to-parse-multiple-sub-commands-using-python-argparse
     #parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
-    parser_manage = parser_s.add_parser('create', help='the option -m --manage-sites has the following subcommands', parents=[parent_parser])
+    parser_manage = parser_s.add_parser('create', help='the option -m --manage-sites has the following subcommands', parents=[parent_parser],prog='PROG', usage='%(prog)s [options]')
     parser_manage.add_argument(
         "--add-site",
         action="store_true", dest="add_site", default=False,
