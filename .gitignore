@@ -2,3 +2,4 @@
 *.wp?
 python
 localdata.py
+sites_pw.py

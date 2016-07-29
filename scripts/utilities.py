@@ -1266,7 +1266,7 @@ def run_commands(opts, cmd_lines, shell=True):
             p.communicate()
 
 
-def update_docker_info(default_values, name, url='unix://var/run/docker.sock'):
+def update_docker_info(default_values, name, url='unix://var/run/docker.sock', required=False):
     cli = default_values.get('docker_client')
     if not cli:
         from docker import Client
@@ -1276,6 +1276,9 @@ def update_docker_info(default_values, name, url='unix://var/run/docker.sock'):
     info = cli.containers(filters={'name' : name})
     if info:
         registry[name] = info
+    else:
+        if required:
+            raise ValueError('required container:%s not running' % name)
     default_values['docker_registry'] = registry
 
 def update_container_info(default_values, opts):
@@ -1294,7 +1297,7 @@ def update_container_info(default_values, opts):
         print 'the site description for %s has no docker description or no container_name' % opts.name
         return
     # collect info on database container which allways is named 'db'
-    update_docker_info(default_values, 'db')
+    update_docker_info(default_values, 'db', required=True)
     update_docker_info(default_values, docker['container_name'])
     #check whether we are a slave
     if site_info.get('slave_info'):
@@ -1303,18 +1306,19 @@ def update_container_info(default_values, opts):
             update_docker_info(default_values, master_site)
 
 def check_and_create_container(default_values, opts):
-    get_container_info(default_values, opts)
+    update_container_info(default_values, opts)
     # if we land here docker info is acessible from sites.py
     name = opts.name
     container_name = SITES[name]['docker']['container_name']
-    odoo_port = SITES[name]['docker']['container_name']
+    odoo_port = SITES[name]['docker']['odoo_port']
     if not default_values['docker_registry'].get(container_name):
         from templates.docker_container import docker_template
         docker_info = {
             'odoo_port' : odoo_port,
             'site_name' : name,
-            'container_name' : container_name
-            'remote_path' : default_values['remote_path']
+            'container_name' : container_name,
+            'remote_path' : SITES[name]['remote_server']['remote_path'],
+            'odoo_image_version' : SITES[name]['docker']['odoo_image_version'],
         }
         docker_template = docker_template % docker_info
         mp = default_values.get('docker_path_map')

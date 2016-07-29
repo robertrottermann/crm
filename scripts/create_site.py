@@ -112,7 +112,7 @@ def main(opts):
         add_site_to_apache(opts, default_values)
         return
     if opts.create  or opts.simple_update or opts.create_server:
-        if default_values['is_local']:
+        if default_values['is_local']:# and not opts.force_git_add:
             opts.__dict__['git_add'] = False
         data = get_config_info(default_values, opts)
         if opts.create:
@@ -224,7 +224,11 @@ if __name__ == '__main__':
     # -----------------------------------------------
     #http://stackoverflow.com/questions/10448200/how-to-parse-multiple-sub-commands-using-python-argparse
     #parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
-    parser_manage = parser_s.add_parser('create', help='the option -m --manage-sites has the following subcommands', parents=[parent_parser],prog='PROG', usage='%(prog)s [options]')
+    parser_manage = parser_s.add_parser('create',
+        help='create --manage-sites has the following subcommands',
+        parents=[parent_parser],
+        prog='PROG',
+        usage='%(prog)s [options]')
     parser_manage.add_argument(
         "--add-site",
         action="store_true", dest="add_site", default=False,
@@ -351,30 +355,16 @@ if __name__ == '__main__':
                         help="password to access db in a docker, default odoo")
 
     parser_docker.add_argument(
-        "-dt", "--transferdocker",
+        "-td", "--transferdocker",
         action="store_true", dest="transferdocker", default=False,
         help = 'transfer data from master to slave using docker'
     )
     parser_docker.add_argument(
-        "-du", "--dataupdate_docker",
+        "-ud", "--dataupdate_docker",
         action="store_true", dest="dataupdate_docker", default=False,
         help = 'update local data from remote server into local docker'
     )
-    parser_manage.add_argument(
-        "-dio", "--installown",
-        action="store_true", dest="installown", default=False,
-        help = 'install modules listed as addons in site running in docker'
-    )
-    parser_manage.add_argument(
-        "-duo", "--updateown",
-        action="store", dest="updateown", default='',
-        help = 'update modules listed as addons in site running in docker, pass a comma separated list (no spaces) or all'
-    )
-    parser_manage.add_argument(
-        "-dro", "--removeown",
-        action="store", dest="removeown", default='',
-        help = 'remove modules listed as addons from site running in docker, pass a comma separated list (no spaces) or all'
-    )
+
     # -----------------------------------------------
     # manage remote server (can be localhost)
     # -----------------------------------------------
