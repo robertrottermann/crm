@@ -194,6 +194,39 @@ SITES_G = {
             #'addons' : ['cms-dms']
         }
     },
+    "afbsdemo" : {
+        'site_name' : 'afbsdemo',
+        'servername' : 'afbsdemo',
+        'odoo_admin_pw' : '',
+        'odoo_version' : '9.0',
+        'smtp_server' : 'mail.redcor.ch',
+        'db_name' : 'afbsdemo',
+        'pg_password' : 'odoo',
+        'email_user_incomming' : 'mailhandler@afbs.ch',
+        'email_pw_incomming' : '',
+        'email_user_outgoing' : 'mailhandler@afbs.ch',
+        'email_pw_outgoing' : '',
+        'inherit'   : 'afbs',
+        'docker' : {
+            'container_name'    : 'afbsdemo',
+            'odoo_port'         : '8073',
+        },
+        'apache' : {
+            'vservername'   : 'demo.afbs.ch',
+            'vserveraliases': [],
+        },
+        'slave_info' : {
+            # master_site ist the name of the mastersite
+            # this must be a site in sites.py
+            "master_site" : 'afbschweiz',
+            # master_domain is the domain from which the master is copied
+            "master_domain" : 'localhost',
+
+        },
+        'skip' : {
+            #'addons' : ['cms-dms']
+        }
+    },
     "breitschtraeff9" : {
         'site_name' : 'breitschtraeff9',
         'servername' : 'breitschtraeff9',

@@ -3,3 +3,5 @@ pycrypto
 psycopg2
 odoorpc
 ruamel.std.argparse
+bgtunnel
+dockerpty

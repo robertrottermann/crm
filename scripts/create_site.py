@@ -112,8 +112,8 @@ def main(opts):
         add_site_to_apache(opts, default_values)
         return
     if opts.create  or opts.simple_update or opts.create_server:
-        if default_values['is_local'] and not opts.force_svn_add:
-            opts.__dict__['svn_add'] = False
+        if default_values['is_local']:
+            opts.__dict__['git_add'] = False
         data = get_config_info(default_values, opts)
         if opts.create:
             check_project_exists(default_values, opts)
@@ -127,7 +127,7 @@ def main(opts):
         if opts.create:
             if data:
                 print '%s site created' % check_name(opts)
-                if not opts.svn_add:
+                if not opts.git_add:
                     print 'site is local, not added ot the repository'
             else:
                 print '%s site allredy existed' % check_name(opts)
@@ -198,8 +198,8 @@ if __name__ == '__main__':
     "**************************\n" \
     "the following files are read:\n" \
     "sites.py: This file contains a set of site descriptions\n" \
-    "sites_local.py: This file contains local site descriptions not managed by svn\n" \
-    "localdata.py: It contains the name and password of the local postgres user. not managed by svn\n" \
+    "sites_local.py: This file contains local site descriptions not managed by git\n" \
+    "localdata.py: It contains the name and password of the local postgres user. not managed by git\n" \
     "**************************\n" \
     "\n-h for help on usage"
     parent_parser = argparse.ArgumentParser(usage=usage, add_help=False)
@@ -351,16 +351,30 @@ if __name__ == '__main__':
                         help="password to access db in a docker, default odoo")
 
     parser_docker.add_argument(
-        "-td", "--transferdocker",
+        "-dt", "--transferdocker",
         action="store_true", dest="transferdocker", default=False,
         help = 'transfer data from master to slave using docker'
     )
     parser_docker.add_argument(
-        "-ud", "--dataupdate_docker",
+        "-du", "--dataupdate_docker",
         action="store_true", dest="dataupdate_docker", default=False,
         help = 'update local data from remote server into local docker'
     )
-
+    parser_manage.add_argument(
+        "-dio", "--installown",
+        action="store_true", dest="installown", default=False,
+        help = 'install modules listed as addons in site running in docker'
+    )
+    parser_manage.add_argument(
+        "-duo", "--updateown",
+        action="store", dest="updateown", default='',
+        help = 'update modules listed as addons in site running in docker, pass a comma separated list (no spaces) or all'
+    )
+    parser_manage.add_argument(
+        "-dro", "--removeown",
+        action="store", dest="removeown", default='',
+        help = 'remove modules listed as addons from site running in docker, pass a comma separated list (no spaces) or all'
+    )
     # -----------------------------------------------
     # manage remote server (can be localhost)
     # -----------------------------------------------

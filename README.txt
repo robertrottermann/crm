@@ -29,16 +29,16 @@ The following steps have to be executed once:
         This is where new projects are created
 
     ..
-    
+
 now you are ready to go
 
 
 create new site:
 ----------------
-A new site is created using create_site.py
-A shortcut exists with bin/c.sh
+A new site is created using bin/c
+Which is a shortcut for bin/creat_site.py
 This script can create both local sites in the projects folder,
-and also helps creating as a local docker container.
+and also helps creating local docker containers.
 Both types get their data from ~/odoo_instances/SITENAME
 Where SITENAME must exist in ~/odoo_instances/sites.py
 

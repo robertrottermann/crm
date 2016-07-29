@@ -88,8 +88,6 @@ def check_name(opts):
         "name",
         "norefresh",
 #        "reset",
-        "svn_add",
-        "force_svn_add",
         "simple_update",
         "dataupdate",
     ]
@@ -125,7 +123,7 @@ def check_name(opts):
     # do we need a name
     nn = [n for n in need_name if opts.__dict__.get(n)]
     nnn = [n for n in no_need_name if opts.__dict__.get(n)]
-    if not nn or nn == ['svn_add']:
+    if not nn:
         if nnn:
             return True
     done = False
@@ -490,22 +488,20 @@ def create_folders(opts, default_values, foldernames):
 
     # create server config
     create_server_config(opts, default_values)
-    # now add to svn ignore
-
-    p = subprocess.Popen('svn propget svn:ignore .', stdout=PIPE,shell = True)
-    res = p.communicate()
-    # propset PROPNAME PROPVAL PATH
-    if res:
-        props = [r.strip() for r in res[0].split('\n') if r]
-        for p in props:
-            if p == check_name(opts):
-                return
-        pv = '\n'.join(props + [check_name(opts)])
-        open('props.txt', 'w').write(pv)
-        p = subprocess.Popen('svn propset svn:ignore -F props.txt .', stdout=PIPE,shell = True)
-        p.communicate()
-        if os.path.exists('props.txt'):
-            os.unlink('props.txt')
+    # p = subprocess.Popen('svn propget svn:ignore .', stdout=PIPE,shell = True)
+    # res = p.communicate()
+    # # propset PROPNAME PROPVAL PATH
+    # if res:
+    #     props = [r.strip() for r in res[0].split('\n') if r]
+    #     for p in props:
+    #         if p == check_name(opts):
+    #             return
+    #     pv = '\n'.join(props + [check_name(opts)])
+    #     open('props.txt', 'w').write(pv)
+    #     p = subprocess.Popen('svn propset svn:ignore -F props.txt .', stdout=PIPE,shell = True)
+    #     p.communicate()
+    #     if os.path.exists('props.txt'):
+    #         os.unlink('props.txt')
 
 # ----------------------------------
 # get_single_value
@@ -946,7 +942,8 @@ def check_project_exists(default_values, opts):
     if not os.path.exists(inner):
         create_new_project(default_values, opts)
     do_copy(skeleton, outer, inner, opts)
-    if opts.svn_add:
+    if opts.git_add:
+        # was svn_add, must be rewritten
         adir = os.getcwd()
         os.chdir('%s/..' % default_values['outer'])
         p = subprocess.Popen(['svn', 'add', default_values['outer'], '--depth=files'],
@@ -1245,8 +1242,43 @@ def add_aliases(opts, default_values):
 # =============================================================
 # handle docker stuff
 # =============================================================
+def run_commands(opts, cmd_lines, shell=True):
+    from localdata import DB_USER, DB_PASSWORD
+    pw   = DB_PASSWORD
+    user = DB_USER
+    counter = 0
+    for cmd_line in cmd_lines:
+        counter +=1
+        if opts.verbose:
+            print 'counter:', counter
+        if not cmd_line:
+            continue
+        print '-' * 80
+        print cmd_line
+        p = subprocess.Popen(
+            cmd_line,
+            stdout=PIPE,
+            env=dict(os.environ, PGPASSWORD=pw,  PATH='/usr/bin'),
+            shell=shell)
+        if opts.verbose:
+            print p.communicate()
+        else:
+            p.communicate()
 
-def check_and_create_container(default_values, opts):
+
+def update_docker_info(default_values, name, url='unix://var/run/docker.sock'):
+    cli = default_values.get('docker_client')
+    if not cli:
+        from docker import Client
+        cli = Client(base_url=url)
+        default_values['docker_client'] = cli
+    registry = default_values.get('docker_registry', {})
+    info = cli.containers(filters={'name' : name})
+    if info:
+        registry[name] = info
+    default_values['docker_registry'] = registry
+
+def update_container_info(default_values, opts):
     sys.path.insert(0, '..')
     try:
         from docker import Client
@@ -1256,24 +1288,44 @@ def check_and_create_container(default_values, opts):
         print 'please run bin/pip install -r install/requirements.txt'
         return
     name = opts.name
-    d = SITES[name].copy()
-    df = deepcopy(default_values)
-    dockerDic = d.get('docker')
-    if not dockerDic:
-        print 'the site description for %s has no docker description' % opts.name
+    site_info = SITES[name]
+    docker = site_info.get('docker')
+    if not docker or not docker.get('container_name'):
+        print 'the site description for %s has no docker description or no container_name' % opts.name
         return
-    df.update(dockerDic)
-    df.update(get_remote_server_info(opts))
-    from templates.docker_container import docker_template
-    docker_template = docker_template % df
-    mp = default_values.get('docker_path_map')
-    if mp and ACT_USER != 'root':
-        try:
-            t, s = mp
-            docker_template = docker_template.replace(s, t)
-        except:
-            pass
-    print docker_template
+    # collect info on database container which allways is named 'db'
+    update_docker_info(default_values, 'db')
+    update_docker_info(default_values, docker['container_name'])
+    #check whether we are a slave
+    if site_info.get('slave_info'):
+        master_site = site_info.get('slave_info').get('master_site')
+        if master_site:
+            update_docker_info(default_values, master_site)
+
+def check_and_create_container(default_values, opts):
+    get_container_info(default_values, opts)
+    # if we land here docker info is acessible from sites.py
+    name = opts.name
+    container_name = SITES[name]['docker']['container_name']
+    odoo_port = SITES[name]['docker']['container_name']
+    if not default_values['docker_registry'].get(container_name):
+        from templates.docker_container import docker_template
+        docker_info = {
+            'odoo_port' : odoo_port,
+            'site_name' : name,
+            'container_name' : container_name
+            'remote_path' : default_values['remote_path']
+        }
+        docker_template = docker_template % docker_info
+        mp = default_values.get('docker_path_map')
+        if mp and ACT_USER != 'root':
+            try:
+                t, s = mp
+                docker_template = docker_template.replace(s, t)
+            except:
+                pass
+        run_commands(opts, [docker_template])
+        print docker_template
 
 # =============================================================
 # get server info from site description
