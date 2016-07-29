@@ -1266,19 +1266,29 @@ def run_commands(opts, cmd_lines, shell=True):
             p.communicate()
 
 
-def update_docker_info(default_values, name, url='unix://var/run/docker.sock', required=False):
+def update_docker_info(default_values, name, url='unix://var/run/docker.sock', required=False, start=True):
     cli = default_values.get('docker_client')
     if not cli:
         from docker import Client
         cli = Client(base_url=url)
         default_values['docker_client'] = cli
     registry = default_values.get('docker_registry', {})
-    info = cli.containers(filters={'name' : name})
+    info = cli.containers(filters={'name' : name}, all=1)
     if info:
+        info = info[0]
+        if info['State'] != 'running':
+            if start:
+                cli.restart(name)
+                info = cli.containers(filters={'name' : name})
+                if not info:
+                    raise ValueError('could not restart container %s', name)
+                info = info[0]
+            elif required:
+                raise ValueError('container %s is stopep, no restart is requested', name)                
         registry[name] = info
     else:
         if required:
-            raise ValueError('required container:%s not running' % name)
+            raise ValueError('required container:%s does not exist' % name)
     default_values['docker_registry'] = registry
 
 def update_container_info(default_values, opts):
@@ -1330,6 +1340,8 @@ def check_and_create_container(default_values, opts):
                 pass
         run_commands(opts, [docker_template])
         print docker_template
+    else:
+        print 'container %s allready running' % name
 
 # =============================================================
 # get server info from site description

@@ -55,7 +55,7 @@ class DBUpdater(object):
             if site_name.endswith('/'):
                 site_name = site_name[:-1]
 
-            site_names = [site_name]
+            site_names = [xxsite_name]
             if not site_names:
                 print '-------------------------------------------------------'
                 print 'invalid site name %s' % site_name
@@ -65,6 +65,10 @@ class DBUpdater(object):
         self.default_values = default_values
         self.site_names = site_names
         self.sites_home = default_values['sites_home']
+        from localdata import DB_USER, DB_PASSWORD
+        db_password   = DB_PASSWORD
+        db_useruser   = DB_USER
+
 
     # ------------------------------------
     # get_value_from_config
@@ -107,7 +111,7 @@ class DBUpdater(object):
     def create_folders(self, path_name, quiet=True):
         errors = False
         if not path_name:
-            print 'site name not provided'
+            print 'path name not provided'
             return
         p = os.path.normpath('%s/../%s' % (os.path.dirname(os.path.abspath(__file__)), path_name))
         for pn in [''] + self.foldernames: #FOLDERNAMES:
@@ -324,10 +328,9 @@ class DBUpdater(object):
                 self.run_commands(cmd_lines)
 
     def run_commands(self, cmd_lines, shell=True):
-        from localdata import DB_USER, DB_PASSWORD
         opts = self.opts
-        pw   = DB_PASSWORD
-        user = DB_USER
+        pw   = self.db_password
+        user = self.db_user
         counter = 0
         for cmd_line in cmd_lines:
             counter +=1

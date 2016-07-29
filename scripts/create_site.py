@@ -43,6 +43,8 @@ from scripts.utilities import list_sites, check_name, create_folders, \
     add_aliases, check_and_create_container, checkout_sa, flatten_sites, \
     create_server_config, diff_installed_modules, install_own_modules
 
+from docker_handler import dockerHandler
+
 import scripts.vcs
 
 from scripts.name_completer import SimpleCompleter
@@ -136,10 +138,11 @@ def main(opts):
         # checkout repositories
         checkout_sa(opts)
 
-    elif opts.create_container:
+    elif opts.docker_create_container:
         # "-C", "--create_container",
         default_values.update(BASE_INFO)
-        check_and_create_container(default_values , opts)
+        handler = dockerHandler(opts, default_values, site_name)
+        handler.check_and_create_container()
 
     elif opts.dataupdate or opts.dataupdate_docker:
         # def __init__(self, opts, default_values, site_name, foldernames=FOLDERNAMES)
@@ -205,7 +208,7 @@ if __name__ == '__main__':
     parent_parser = argparse.ArgumentParser(usage=usage, add_help=False)
     parent_parser.add_argument(
         "-n", "--name",
-        action=NameAction, dest="name", default=False,
+        action="store", dest="name", default=False,
         help = 'name of the site to create'
     )
     parent_parser.add_argument(
@@ -342,8 +345,8 @@ if __name__ == '__main__':
     #parser_support_s = parser_support.add_subparsers(title='docker commands', dest="docker_commands")
     parser_docker = parser_s.add_parser('docker', help='the option -d --docker has the following subcommands', parents=[parent_parser])
     parser_docker.add_argument(
-        "-C", "--create_container",
-        action="store_true", dest="create_container", default=False,
+        "-dc", "--create_container",
+        action="store_true", dest="docker_create_container", default=False,
         help = 'create a docker container, also option -n --name must be set'
     )
     parser_docker.add_argument("-ddbuser", "--dockerdbuser",
@@ -355,12 +358,12 @@ if __name__ == '__main__':
                         help="password to access db in a docker, default odoo")
 
     parser_docker.add_argument(
-        "-td", "--transferdocker",
+        "-dtd", "--transferdocker",
         action="store_true", dest="transferdocker", default=False,
         help = 'transfer data from master to slave using docker'
     )
     parser_docker.add_argument(
-        "-ud", "--dataupdate_docker",
+        "-dud", "--dataupdate_docker",
         action="store_true", dest="dataupdate_docker", default=False,
         help = 'update local data from remote server into local docker'
     )
@@ -420,6 +423,10 @@ if __name__ == '__main__':
 
     #(opts, args) = parser.parse_args()
     parser.set_default_subparser('create')
-    opts = OptsWrapper(parser.parse_args())
+    args, unknownargs = parser.parse_known_args()
+    opts = OptsWrapper(args)
+    if not opts.name and unknownargs:
+        opts.__dict__['name'] = unknownargs[0]
+
     # is there a valid option?
     main(opts) #opts.noinit, opts.initonly)
