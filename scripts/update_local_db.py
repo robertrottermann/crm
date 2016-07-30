@@ -47,15 +47,16 @@ class DBUpdater(object):
     class to do update the loacal database
     """
     dpath = ''
-    def __init__(self, opts, default_values, site_name, foldernames=FOLDERNAMES):
+    def __init__(self, opts, default_values, site_name, foldernames=FOLDERNAMES, sites=SITES):
         site_names = []
+        self.sites = sites
         if site_name == 'all':
-            site_names = SITES.keys()
+            site_names = self.sites.keys()
         else:
             if site_name.endswith('/'):
                 site_name = site_name[:-1]
 
-            site_names = [xxsite_name]
+            site_names = [site_name]
             if not site_names:
                 print '-------------------------------------------------------'
                 print 'invalid site name %s' % site_name
@@ -66,8 +67,9 @@ class DBUpdater(object):
         self.site_names = site_names
         self.sites_home = default_values['sites_home']
         from localdata import DB_USER, DB_PASSWORD
-        db_password   = DB_PASSWORD
-        db_useruser   = DB_USER
+        self.db_password   = DB_PASSWORD
+        self.db_user   = DB_USER
+        self.foldernames = foldernames
 
 
     # ------------------------------------
@@ -127,7 +129,80 @@ class DBUpdater(object):
                 print 'not all directories could be created'
             else:
                 print 'directories for %s created' % check_name(opts)
+                
+    def _doUpdate(self, db_update=True, norefresh=None, db_name='', server_info={}):
+        try:
+            # we want to make sure the local directories exist
+            self.create_folders(db_name)
+        except AttributeError:
+            pass
 
+        pg_password = server_info['pg_password']
+        remote_user = server_info['remote_user']
+        remote_data_dir = server_info['remote_data_dir']
+        remote_url = server_info['remote_url']
+        
+        dpath = '%s/%s/dump/%s.dmp' % (self.sites_home, db_name, db_name)
+        if not norefresh:
+            os.system('%s/scripts/updatedb.sh %s %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user, self.sites_home))
+            # if remote user is not root we first have to copy things where we can access it
+            if remote_user != 'root':
+                # this calls the remote site_syncer.py script
+                # it copy needed files to the users home and changes ownership
+                os.system('%s/scripts/updatedb_remote.sh %s %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user, remote_path))
+            # rsync the remote files to the local directories
+            os.system('%s/scripts/rsync_remote_local.sh %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user))
+            if not os.path.exists(dpath):
+                print '-------------------------------------------------------'
+                print '%s not found' % dpath
+                print '-------------------------------------------------------'
+                return
+            try:
+                if opts.backup:
+                    # no need to update database
+                    return
+            except AttributeError:
+                pass
+        if db_update:
+            pw   = self.db_password
+            user = self.db_useruser
+            shell = False
+            # mac needs absolute path to psql
+            where = os.path.split(which('psql'))[0]
+            wd = which('docker')
+            if wd:
+                whered = os.path.split(wd)[0]
+            else:
+                whered = ''
+            if whered:
+                cmd_lines_docker = [
+                    ['%s/docker run -v %s:/mnt/sites --rm=true --link db:db -it dbdumper -r %s' % (whered, self.sites_home, db_name)]
+                ]
+            else:
+                cmd_lines_docker = [
+                    ['docker run -v %s:/mnt/sites --rm=true --link db:db -it dbdumper -r %s' % (self.sites_home, db_name)]
+                ]
+            cmd_lines_no_docker = [
+                # delete the local database(s)
+                ['%s/psql' % where, '-U', user, '-d', 'postgres',  '-c', "drop database IF EXISTS %s;" % db_name],
+                # create database again
+                ['%s/psql' % where, '-U', user, '-d', 'postgres',  '-c', "create database %s;" % db_name],
+                # do the actual reading of the database
+                # the database will have thae same name as on the remote server
+                ['%s/pg_restore' % where, '-O', '-U', user, '-d', db_name, dpath],
+                # set standard password
+                ['%s/psql' % where, '-U', user, '-d', db_name,  '-c', "update res_users set password='admin' where login='admin';"],
+            ]
+            cmd_lines = [
+            ]
+
+            if opts.dataupdate_docker or opts.transferdocker:
+                cmd_lines = cmd_lines_docker + cmd_lines
+                shell = True
+            else:
+                cmd_lines = cmd_lines_no_docker + cmd_lines
+            self.run_commands(cmd_lines, shell=shell)
+        
     def doUpdate(self, db_update=True, norefresh=None, names=[]):
         opts = self.opts
         if not names:
@@ -135,97 +210,19 @@ class DBUpdater(object):
         if norefresh is None:
             norefresh = opts.norefresh
         for db_name in names:
-            db_data = SITES[db_name]
+            db_data = self.sites[db_name]
             # we have to get info about the remote server indirectly
             # as it could be overridden by overrideremote
             remote_path = db_data.get('remote_server', {'remote_path' : '/root/odoo_instances'})['remote_path']
-
             server_dic = get_remote_server_info(opts)
-            remote_url = server_dic.get('remote_url')
-            remote_user = server_dic.get('remote_user')
-            remote_data_dir = server_dic.get('remote_path')
-            # pg_password is on local host. even when run remotely
-            pg_password = db_data.get('pg_password')
-            try:
-                if opts.backup:
-                    # we want to make sure the local directories exist
-                    self.create_folders(db_name)
-            except AttributeError:
-                pass
-
-            dpath = '%s/%s/dump/%s.dmp' % (self.sites_home, db_name, db_name)
-            if not norefresh:
-                os.system('%s/scripts/updatedb.sh %s %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user, self.sites_home))
-                # if remote user is not root we first have to copy things where we can access it
-                if remote_user != 'root':
-                    # this calls the remote site_syncer.py script
-                    # it copy needed files to the users home and changes ownership
-                    os.system('%s/scripts/updatedb_remote.sh %s %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user, remote_path))
-                # rsync the remote files to the local directories
-                os.system('%s/scripts/rsync_remote_local.sh %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user))
-                if not os.path.exists(dpath):
-                    print '-------------------------------------------------------'
-                    print '%s not found' % dpath
-                    print '-------------------------------------------------------'
-                    continue
-                try:
-                    if opts.backup:
-                        # no need to update database
-                        continue
-                except AttributeError:
-                    pass
-            if db_update:
-                if opts.dataupdate_docker:
-                    # we need to learn what ip address the local docker db is using
-                    from docker import Client
-                    cli = Client(base_url='unix://var/run/docker.sock')
-                    remote_url = cli.containers(filters = {'name' : 'db'})[0][u'NetworkSettings'][u'Networks']['bridge']['IPAddress']
-                    remote_user = opts.dockerdbuser
-                    remote_data_dir = self.sites_home
-                    pg_password = opts.dockerdbpw
-                    pw = pg_password
-                    user = remote_user
-                else:
-                    # what is the local user that is allowed to update the local db
-                    from localdata import DB_USER, DB_PASSWORD
-                    pw   = DB_PASSWORD
-                    user = DB_USER
-                shell = False
-                # mac needs absolute path to psql
-                where = os.path.split(which('psql'))[0]
-                wd = which('docker')
-                if wd:
-                    whered = os.path.split(wd)[0]
-                else:
-                    whered = ''
-                if whered:
-                    cmd_lines_docker = [
-                        ['%s/docker run -v %s:/mnt/sites --rm=true --link db:db -it dbdumper -r %s' % (whered, self.sites_home, db_name)]
-                    ]
-                else:
-                    cmd_lines_docker = [
-                        ['docker run -v %s:/mnt/sites --rm=true --link db:db -it dbdumper -r %s' % (self.sites_home, db_name)]
-                    ]
-                cmd_lines_no_docker = [
-                    # delete the local database(s)
-                    ['%s/psql' % where, '-U', user, '-d', 'postgres',  '-c', "drop database IF EXISTS %s;" % db_name],
-                    # create database again
-                    ['%s/psql' % where, '-U', user, '-d', 'postgres',  '-c', "create database %s;" % db_name],
-                    # do the actual reading of the database
-                    # the database will have thae same name as on the remote server
-                    ['%s/pg_restore' % where, '-O', '-U', user, '-d', db_name, dpath],
-                    # set standard password
-                    ['%s/psql' % where, '-U', user, '-d', db_name,  '-c', "update res_users set password='admin' where login='admin';"],
-                ]
-                cmd_lines = [
-                ]
-
-                if opts.dataupdate_docker or opts.transferdocker:
-                    cmd_lines = cmd_lines_docker + cmd_lines
-                    shell = True
-                else:
-                    cmd_lines = cmd_lines_no_docker + cmd_lines
-                self.run_commands(cmd_lines, shell=shell)
+            server_info = {
+                'remote_url' : server_dic.get('remote_url'),
+                'remote_user' : server_dic.get('remote_user'),
+                'remote_data_dir' : server_dic.get('remote_path'),
+                # pg_password is on local host. even when run remotely
+                'pg_password' : db_data.get('pg_password'),
+            }
+            self._doUpdate(db_update, norefresh, name, server_info)
 
     def doTransfer(self):
         # transfer data from on docker acount to an other
@@ -252,7 +249,7 @@ class DBUpdater(object):
                 if len(self.site_names) > 1:
                     continue
                 return
-            remote_url = 'localhost' #server_dic.get('remote_url')
+            remote_url = server_dic.get('remote_url')
             remote_user = server_dic.get('remote_user')
             remote_data_dir = server_dic.get('remote_path')
             # pg_password is on local host. even when run remotely

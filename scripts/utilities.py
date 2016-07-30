@@ -111,7 +111,7 @@ def check_name(opts):
         if name:
             if name.endswith('/'):
                 name = name[:-1]
-            opts.__dict__['name'] = name
+            opts._o.__dict__['name'] = name
             # if not isinstance(opts, basestring):
             #     if opts.add_site:
             #         return name
@@ -121,8 +121,8 @@ def check_name(opts):
                 return name
     # no name
     # do we need a name
-    nn = [n for n in need_name if opts.__dict__.get(n)]
-    nnn = [n for n in no_need_name if opts.__dict__.get(n)]
+    nn = [n for n in need_name if opts._o.__dict__.get(n)]
+    nnn = [n for n in no_need_name if opts._o.__dict__.get(n)]
     if not nn:
         if nnn:
             return True
@@ -143,7 +143,7 @@ def check_name(opts):
         else:
             print '%s is not defined in sites.py. you can add it with option --add-site' % _name
         if done:
-            opts.__dict__['name'] = _name
+            opts._o.__dict__['name'] = _name
             return _name
 
 
@@ -270,7 +270,9 @@ def diff_installed_modules(opts, req, mod_path, rewrite, list_only=False):
 
 # ----------------------------------
 # install_own_modules
-def install_own_modules(opts, default_values, list_only=False):
+# own modules are listed in insyste.py under the key addons
+
+def install_own_modules(opts, default_values, list_only=False, quiet=False):
     if list_only:
         from templates.install_blocks import INSTALL_BLOCKS
         print '\nthe following installable odoo module blocks exist:'
@@ -286,7 +288,7 @@ def install_own_modules(opts, default_values, list_only=False):
     odoo_addons = site.get('odoo_addons')
     req = []
     module_obj = None
-    if opts.installown or opts.updateown or opts.removeown or opts.listownmodules: # what else ??
+    if opts.installown or opts.updateown or opts.removeown or opts.listownmodules or quiet: # what else ??
         for a in (site_addons or []):
             # find out name
             name = ''
@@ -302,10 +304,12 @@ def install_own_modules(opts, default_values, list_only=False):
                 else:
                     req.append(name)
             else:
-                if a:
+                if a and not quiet:
                     print '----> coud not detect name for %s' % a.get('url', '')
 
-    if opts.listownmodules:
+    if opts.listownmodules or quiet=='listownmodules':
+        if quiet:
+            return req
         print '\nthe following modules will be installed for %s:' % site_name
         print '---------------------------------------------------'
         for n, url in req:
@@ -1371,7 +1375,7 @@ def get_remote_server_info(opts, use_name=None):
             'remote_user'   : d['remote_user'],
         }
     # if the remote url is overridden, replace it now
-    if opts.__dict__.has_key('remote_url') and opts.overrideremote:
+    if opts._o.__dict__.has_key('remote_url') and opts.overrideremote:
         serverDic['remote_url'] = opts.overrideremote
     # now we have to make sure, that we use the local users credentials
     remote_url = serverDic['remote_url']

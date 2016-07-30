@@ -5,6 +5,7 @@ import sys
 import os
 import logging
 from pprint import pprint
+from name_completer import SimpleCompleter
 
 #from optparse import OptionParser
 class bcolors:
@@ -52,9 +53,22 @@ from scripts.update_local_db import DBUpdater
 
 class OptsWrapper(object):
     def __init__(self, d):
-        self.d = d
+        self.__d = d
     def __getattr__(self, key):
-        return hasattr(self.d, key) and getattr(self.d, key)
+        return hasattr(self.__d, key) and getattr(self.__d, key)
+    @property
+    def _o(self):
+        return(self.__d)
+
+def collect_options(opts):
+    # return list of posible suboptions
+    # and if a valid otion is selected
+    actual = opts._o.subparser_name
+    _o = opts._o._get_kwargs()
+    skip = ['name', 'subparser_name', 'dockerdbpw', 'dockerdbuser']
+    keys = [k[0] for k in _o if k[0] not in skip]
+    is_set = [k[1] for k in _o if k[1] and (k[0] not in skip)]
+    return actual, is_set, keys
 
 def main(opts):
 
@@ -62,16 +76,12 @@ def main(opts):
         update_base_info(BASE_INFO_FILENAME, BASE_DEFAULTS)
         return
 
-    # first handle "easy options" so we can leave again
-    if opts.list_sites:
-        list_sites(SITES)
-        return
     # check if name is given and valid
     site_name = check_name(opts)
     if not site_name:
         print 'done..'
         return
-
+    print '->', site_name
     # resolv inheritance in sites
     flatten_sites(SITES)
 
@@ -80,8 +90,28 @@ def main(opts):
         print "you should provide base info by using the -r option"
         return
 
+    parsername, selected, options = collect_options(opts)
+    default_values = construct_defaults(site_name, opts)
+    if not selected:
+        cmpl = SimpleCompleter(parsername, options)
+        _o = cmpl.input_loop()
+        if _o in options:
+            if isinstance(opts._o.__dict__[_o], bool):
+                opts._o.__dict__[_o] = True
+            elif _o in ['updateown', 'removeown']:
+                l = install_own_modules(opts, default_values, quiet='listownmodules')
+                cmpl = SimpleCompleter(l)
+                _r = cmpl.input_loop()
+                if _o:
+                    opts._o.__dict__[_o] = _r
+            else:
+                opts._o.__dict__[_o] = raw_input('value for %s:' % _o)
     # construct defaultvalues like list of target directories
     default_values = construct_defaults(site_name, opts)
+
+    if opts.list_sites:
+        list_sites(SITES)
+        return
 
     if opts.installown or opts.updateown or opts.removeown or opts.listownmodules or opts.installodoomodules:
         install_own_modules(opts, default_values)
@@ -115,7 +145,7 @@ def main(opts):
         return
     if opts.create  or opts.simple_update or opts.create_server:
         if default_values['is_local']:# and not opts.force_git_add:
-            opts.__dict__['git_add'] = False
+            opts._o.__dict__['git_add'] = False
         data = get_config_info(default_values, opts)
         if opts.create:
             check_project_exists(default_values, opts)
@@ -146,7 +176,10 @@ def main(opts):
 
     elif opts.dataupdate or opts.dataupdate_docker:
         # def __init__(self, opts, default_values, site_name, foldernames=FOLDERNAMES)
-        handler = DBUpdater(opts, default_values, site_name)
+        if opts.dataupdate:
+            handler = DBUpdater(opts, default_values, site_name)
+        else:
+            handler = dockerHandler(opts, default_values, site_name)
         handler.doUpdate(db_update = not opts.noupdatedb)
 
     elif opts.transferlocal or opts.transferdocker:
@@ -219,7 +252,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(add_help=False)# ArgumentParser(usage=usage)
     parser.add_argument('--help', action=_HelpAction, help='help for help if you need some help')  # add custom help
-    parser_s = parser.add_subparsers(title='subcommands', dest="subcommands")
+    parser_s = parser.add_subparsers(title='subcommands', dest="subparser_name")
     #parser_site   = parser_s.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
 
     # -----------------------------------------------
@@ -227,8 +260,10 @@ if __name__ == '__main__':
     # -----------------------------------------------
     #http://stackoverflow.com/questions/10448200/how-to-parse-multiple-sub-commands-using-python-argparse
     #parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
-    parser_manage = parser_s.add_parser('create',
+    parser_manage = parser_s.add_parser(
+        'create',
         help='create --manage-sites has the following subcommands',
+        #aliases=['c'],
         parents=[parent_parser],
         prog='PROG',
         usage='%(prog)s [options]')
@@ -343,7 +378,11 @@ if __name__ == '__main__':
     # manage docker
     # -----------------------------------------------
     #parser_support_s = parser_support.add_subparsers(title='docker commands', dest="docker_commands")
-    parser_docker = parser_s.add_parser('docker', help='the option -d --docker has the following subcommands', parents=[parent_parser])
+    parser_docker = parser_s.add_parser(
+        'docker', 
+        #aliases=['d'],        
+        help='the option --docker has the following subcommands', 
+        parents=[parent_parser])
     parser_docker.add_argument(
         "-dc", "--create_container",
         action="store_true", dest="docker_create_container", default=False,
@@ -372,7 +411,11 @@ if __name__ == '__main__':
     # manage remote server (can be localhost)
     # -----------------------------------------------
     #parser_docker_s = parser_docker.add_subparsers(title='remote commands', dest="remote_commands")
-    parser_remote = parser_s.add_parser('remote', help='the option -r --remote has the following subcommands', parents=[parent_parser])
+    parser_remote = parser_s.add_parser(
+        'remote', 
+        #aliases=['r'],    
+        help='the option -r --remote has the following subcommands', 
+        parents=[parent_parser])
     parser_remote.add_argument(
         "--add-apache",
         action="store_true", dest="add_apache", default=False,
@@ -392,7 +435,7 @@ if __name__ == '__main__':
     # manage rpc stuff
     # -----------------------------------------------
     #parser_remote_s = parser_remote.add_subparsers(title='remote commands', dest="rpc_commands")
-    parser_rpc = parser_s.add_parser('rpc', help='the option rpc --rpc has the following subcommands', parents=[parent_parser])
+    parser_rpc = parser_s.add_parser('rpc', help='the option rpc has the following subcommands', parents=[parent_parser])
     parser_rpc.add_argument("-dbh", "--dbhost",
                     action="store", dest="dbhost", default='localhost',
                     help="define host default localhost")
@@ -426,7 +469,7 @@ if __name__ == '__main__':
     args, unknownargs = parser.parse_known_args()
     opts = OptsWrapper(args)
     if not opts.name and unknownargs:
-        opts.__dict__['name'] = unknownargs[0]
+        opts._o.__dict__['name'] = unknownargs[0]
 
     # is there a valid option?
     main(opts) #opts.noinit, opts.initonly)

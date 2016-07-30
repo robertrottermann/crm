@@ -11,12 +11,13 @@ logging.basicConfig(filename=LOG_FILENAME,
 class SimpleCompleter(object):
     match_index = None
     default = ''
-    def __init__(self, sites_dic, default=''):
+    def __init__(self, parsername, options, default=''):
         #options = sites_dic.keys()
-        options = [ w for w in sites_dic.keys()
+        options = [ w for w in options
             if w.startswith(default) ]
         self.options = sorted(options)
         self.default = default
+        self.parsername = parsername
         # Register our completer function
         #readline.set_completer(SimpleCompleter(['start', 'stop', 'list', 'print']).complete)
         readline.set_completer(self.complete)
@@ -52,7 +53,7 @@ class SimpleCompleter(object):
         line = self.default
         go_on = True
         while go_on:
-            line = raw_input('name ("q" to quit, tab for options): ' + (line and '(%s)' % line or ''))
+            line = (raw_input('%s ("q" to quit, tab for options): ' % self.parsername) + (line and '(%s)' % line or ''))
             if line:
                 line = line.strip()
             if line == 'q':
