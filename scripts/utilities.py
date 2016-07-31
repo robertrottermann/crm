@@ -68,26 +68,24 @@ except ImportError:
 
 
 # -------------------------------------------------------------------
-# check_name
-# check if name is in any of the sites listed in list_siteslist_sites
+# name_neded
+# check if name neede
 # or needed at all
+# @opts otion namespace
+# @optin : option to check
+#          if not provided check what option user has selected
 # -------------------------------------------------------------------
-def check_name(opts):
+def name_neded(opts, option=None):
     need_name = [
-#        "alias",
         "add_apache",
         "add_site",
         "add_site_local",
         "module_add",
-#        "module_create",
         "create_container",
         "create",
-#        "docker",
         "directories",
-#        "list_sites",
         "name",
         "norefresh",
-#        "reset",
         "simple_update",
         "dataupdate",
     ]
@@ -99,8 +97,34 @@ def check_name(opts):
         "reset",
         "listmodules",
     ]
+    # do we need a name
+    if an option is provide, check this one
+    if option:
+        if option in no_need_name:
+            return
+        if option in need_name:
+            return True
+    # no decision could be made so far, check the options
+    nn = [n for n in need_name if opts._o.__dict__.get(n)]
+    nnn = [n for n in no_need_name if opts._o.__dict__.get(n)]
+    if not nn:
+        # nothing found that needs a name so far
+        if nnn:
+            # we faoun an option set that does not require name
+            return
+    # bah, what should we do ..
+    # lets assume, we do not need a name ..
+    return
 
-
+# -------------------------------------------------------------------
+# check_name
+# check if name is in any of the sites listed in list_sites
+# or needed at all
+# @opts otion namespace
+# @no_completion: flag whether a vlid name should be selected for a
+#                 selection list
+# -------------------------------------------------------------------
+def check_name(opts, parser_name='', no_completion = False):
     if opts:
         if isinstance(opts, basestring):
             name = opts
@@ -120,14 +144,13 @@ def check_name(opts):
             if opts.add_site or opts.add_site_local:
                 return name
     # no name
-    # do we need a name
-    nn = [n for n in need_name if opts._o.__dict__.get(n)]
-    nnn = [n for n in no_need_name if opts._o.__dict__.get(n)]
-    if not nn:
-        if nnn:
-            return True
+    if not no_completion:
+        # probably called at startup
+        return name
+    if not name_neded(opts):
+        return
     done = False
-    cmpl = SimpleCompleter(SITES, name or opts.sitename or '')
+    cmpl = SimpleCompleter(SITES, default = name or opts.sitename or '', prompt='please provide valid site name:')
     while not done:
         _name = cmpl.input_loop()
         if _name is None:
@@ -946,20 +969,20 @@ def check_project_exists(default_values, opts):
     if not os.path.exists(inner):
         create_new_project(default_values, opts)
     do_copy(skeleton, outer, inner, opts)
-    if opts.git_add:
-        # was svn_add, must be rewritten
-        adir = os.getcwd()
-        os.chdir('%s/..' % default_values['outer'])
-        p = subprocess.Popen(['svn', 'add', default_values['outer'], '--depth=files'],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        p = subprocess.Popen(['svn', 'add', '%s/documents' % default_values['outer']],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p = subprocess.Popen(['svn', 'propset', 'svn:ignore', opts.name, default_values['outer']],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        print out, err
-        # make sure wirtual env exist even when the project was red from the repository
+    # if opts.git_add:
+    #     # was svn_add, must be rewritten
+    #     adir = os.getcwd()
+    #     os.chdir('%s/..' % default_values['outer'])
+    #     p = subprocess.Popen(['svn', 'add', default_values['outer'], '--depth=files'],
+    #                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #     out, err = p.communicate()
+    #     p = subprocess.Popen(['svn', 'add', '%s/documents' % default_values['outer']],
+    #                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #     p = subprocess.Popen(['svn', 'propset', 'svn:ignore', opts.name, default_values['outer']],
+    #                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #     out, err = p.communicate()
+    #     print out, err
+    #     # make sure wirtual env exist even when the project was red from the repository
     create_virtual_env(inner)
 
 def create_new_project(default_values, opts):
@@ -1288,7 +1311,7 @@ def update_docker_info(default_values, name, url='unix://var/run/docker.sock', r
                     raise ValueError('could not restart container %s', name)
                 info = info[0]
             elif required:
-                raise ValueError('container %s is stopep, no restart is requested', name)                
+                raise ValueError('container %s is stopep, no restart is requested', name)
         registry[name] = info
     else:
         if required:

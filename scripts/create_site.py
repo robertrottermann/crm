@@ -7,6 +7,21 @@ import logging
 from pprint import pprint
 from name_completer import SimpleCompleter
 
+"""
+to do:
+------
+ODOO_SERVER_DATA config variable
+dumper.py should make use of this variable.
+have an alias for each remote server in local_data.py
+that allows to test things locally
+
+re-moddel sites in sites.py to have a mails structure
+add a version number to sites.py
+make an update script that applies changes to sites.py according to its
+actual version
+create an option that configures the mail servers on the target server
+"""
+
 #from optparse import OptionParser
 class bcolors:
     HEADER = '\033[95m'
@@ -42,14 +57,17 @@ from scripts.utilities import list_sites, check_name, create_folders, \
     update_base_info, add_site_to_sitelist, add_site_to_apache, get_config_info, \
     check_project_exists, create_new_project, module_add, construct_defaults, \
     add_aliases, check_and_create_container, checkout_sa, flatten_sites, \
-    create_server_config, diff_installed_modules, install_own_modules
+    create_server_config, diff_installed_modules, install_own_modules \
+    name_neded
 
-from docker_handler import dockerHandler
-
+# scripts.vcs handles git stuff
 import scripts.vcs
-
+# name_completer handles completion of otion lists
 from scripts.name_completer import SimpleCompleter
+# DBUpdater handles updating of postgres daatabases and the copying of the filestore
 from scripts.update_local_db import DBUpdater
+# dockerHandler handles getting and updating of date that resides within containers
+from docker_handler import dockerHandler
 
 class OptsWrapper(object):
     def __init__(self, d):
@@ -72,26 +90,46 @@ def collect_options(opts):
 
 def main(opts):
 
+    # reset
+    # -----
+    # when we start the first time or want to reset the stored config
+    # these values are writen to $SITES_HOME/config/base_info.py
+    # - project path: the path to the folder, where the projects are added to
+    # - docker_path_map : mapping applied to the paths assigned to the
+    #   docker volumes names when you run docker as a non root user.
+    #   This helps to keep the same file structure on the remote and local
+    #   server.
+    # - serer data path: where server data is stored in a folder structure
+    #   for each server
     if NEED_BASEINFO or opts.reset:
         update_base_info(BASE_INFO_FILENAME, BASE_DEFAULTS)
         return
 
     # check if name is given and valid
-    site_name = check_name(opts)
-    if not site_name:
-        print 'done..'
-        return
-    print '->', site_name
-    # resolv inheritance in sites
+    site_name = check_name(opts, no_completion = True)
+
+    # resolve inheritance within sites
     flatten_sites(SITES)
 
-    #update_default_values(default_values, for_docker=opts.docker)
+    # should never happen ..
     if not BASE_INFO:
         print "you should provide base info by using the -r option"
         return
 
+    # collect info on what parser and what options are selected
     parsername, selected, options = collect_options(opts)
+
+    # default_values contains all we know about the sities, their physical
+    # location, our permission how we can connect them ..
     default_values = construct_defaults(site_name, opts)
+
+    # the user can start using different paths
+    # - without selecting anything:
+    #   the create parser will be preselected
+    # - without providing a full site name
+    #   a site name will be asked for. if an invalid or partial name
+    #   has bee provided, it will be used as default
+    # - with a set of valid options
     if not selected:
         cmpl = SimpleCompleter(parsername, options)
         _o = cmpl.input_loop()
@@ -106,20 +144,42 @@ def main(opts):
                     opts._o.__dict__[_o] = _r
             else:
                 opts._o.__dict__[_o] = raw_input('value for %s:' % _o)
-    # construct defaultvalues like list of target directories
+
+    # now we can really check whether name is given and valid
+    site_name = check_name(opts, no_completion = True)
+    # if we have an option that nees a name ..
+    if name_neded(opts) and not site_name:
+        print 'done..'
+        return
+
+    # construct default values like list of target directories
     default_values = construct_defaults(site_name, opts)
 
+    # --------------------------------------------------------
+    # simple options from which we return after completion
+    # therefore only one of them can be sensibly selecte
+    # --------------------------------------------------------
+
+    # list_sites
+    # ----------
+    # list_sites lists all existing sites both from global and local sites
     if opts.list_sites:
         list_sites(SITES)
         return
 
-    if opts.installown or opts.updateown or opts.removeown or opts.listownmodules or opts.installodoomodules:
-        install_own_modules(opts, default_values)
-
+    # list_mdules
+    # -----------
+    # list_mdules list defined odoo install blocks
+    # each install block contains from a list of addons that and odoo module
+    # like CRM installs
     if opts.listmodules:
         install_own_modules(opts, default_values, list_only=True)
         return
 
+    # showmodulediff and showmodulediff_refresh
+    # -----------------------------------------
+    # showmodulediff and showmodulediff_refresh are auxiliary otions that are
+    # only needed to create the install block
     if opts.showmodulediff or opts.showmodulediff_refresh:
         p = os.path.normpath('%s/.installed' % default_values['sites_home'])
         rewrite = False
@@ -127,25 +187,112 @@ def main(opts):
             rewrite = True
         diff_installed_modules(opts, [], p, rewrite)
 
+    # directories
+    # -----------
+    # directories creates the needed directory scruture in $ODOO_SERVER_DATA
+    #
+    # this option is automaticall executed for all modules that rely on
+    # the datastructure to exist.
     if opts.directories:
         create_folders(opts, default_values, FOLDERNAMES)
         return
-    if opts.module_create:
-        if not opts.module_add:
-            print '--module-create is only allowed together with --module-add'
-            return
-    if opts.module_add:
-        module_add(opts, default_values, SITES.get(site_name), opts.module_add)
-        return
+
+    # add_site
+    # --------
+    # add_site adds a site description to the sites.py file
+    # add_site_local adds a site description to the sites_local.py file
     if opts.add_site or opts.add_site_local:
         add_site_to_sitelist(opts, default_values)
         return
+
+    # add_apache
+    # ----------
+    # add_apache adds a virtual host to the appache configuration
+    # it is meant to run as user root on the remote server
+    # if it is run locally (without root permission) it only prints the
+    # content it would have written to the console
+    #
+    # the create the virtual host stanza add_apache collects info from sites.py
+    # for $SITENAME. it uses the data found with the key "apache"
+    # it collects these data:
+    # - vservername: the name/url to acces the virtual server like: www.redcor.ch
+    # - protokols: list of protokols to use like ['http', 'https']
+    # - vserveraliases: list of alias name like ['redcor.ch']
+    # to calculate the port under which the server runs the key
+    # docker is used.
+    # - odoo_port: port the docker container exposes to acess its odoo server
     if opts.add_apache:
         add_site_to_apache(opts, default_values)
         return
+
+    # listownmodules
+    # --------------
+    # list the modules that are declared within the selected site
+    # installown install all modules declared in the selected site
+    # updateown updates one or all modules declared in the selected site
+    # removeown removes one or all modules declared in the selected site
+    if opts.installown or opts.updateown or opts.removeown or \
+        opts.listownmodules or opts.installodoomodules:
+            install_own_modules(opts, default_values)
+        return
+
+    # alias
+    # -----
+    # adds a number of aliases to local ~/.bash_aliases
+    # these aliases are:
+    # $SITENAME cd $PROJECT_HOME/$SITENAME/$SITENAME
+    # $SITENAMEhome cd $PROJECT_HOME/$SITENAME
+    # $SITENAMEa cd $PROJECT_HOME/$SITENAME/$SITENAME/$SITENAME_addons
+    #
+    # this option is run automatically when a site is built
+    if opts.alias:
+        add_aliases(opts, default_values)
+        return
+
+    # --------------------------------------------------------
+    # stackable options from which we DO NOT return after completion
+    # any number of the can be selected, oder of execution is not defined
+    # --------------------------------------------------------
+
+    # create builds or updates a server structure
+    # ------
+    # to do so, it does a number of steps
+    #   - creates the needed folders in $ODOO_SERVER_DATA
+    #   - creates a build structure in $PROJECT_HOME/$SITENAME/$SITENAME
+    #     where $PROJECT_HOME is read from the config file.
+    #   - copies and sets up all files from skeleton directory to the build structure
+    #     this is done executing create_new_project and do_copy
+    #   - builds a virtualenv environment in the build structure
+    #   - prepares to builds an odoo server within the build structure by
+    #     execution  bin/buildout within the build structure.
+    #     Within this buildout environment odoos module path will be set
+    #     that it points to the usual odoo directories within the build substructure
+    #     and also to the directories within odoo_instances as dictated by the
+    #     various modules installed from interpreting the site declaration
+    #     in sites.py
+    #   - add a "private" addons folder within the build structure called
+    #     $SITENAME_addons. This folder is also added to odoos addon path.
+    #   - set the data_dir to point to $ODOO_SERVER_DATA/$SITENAME/filestorage
+    #
+    # simple_update
+    # -------------
+    # it is ment to update a local site.
+    # it is not in a well defined state just now
+    #
+    # create_server
+    # -------------
+    # it is similar to create but is meant to be run on the remote server
+    # it assumes that the remote odoo instance runs in a docker container.
+    # it also does create the needed structure and builds the odoo addons path
+    # but does not build the odoo server bouildout environment in
+    # $PROJECT_HOME/$SITENAME/$SITENAME.
+    # it executes these steps:
+    #   - create folder structure in $ODOO_SERVER_DATA
+    #   - create a config file in $ODOO_SERVER_DATA/etc/openerp.cfg
+    #   - set the data_dir to point to $ODOO_SERVER_DATA/$SITENAME/filestorage
+    #   - set the log file to $ODOO_SERVER_DATA/$SITENAME/log/odoo.log
+
     if opts.create  or opts.simple_update or opts.create_server:
-        if default_values['is_local']:# and not opts.force_git_add:
-            opts._o.__dict__['git_add'] = False
         data = get_config_info(default_values, opts)
         if opts.create:
             check_project_exists(default_values, opts)
@@ -159,8 +306,6 @@ def main(opts):
         if opts.create:
             if data:
                 print '%s site created' % check_name(opts)
-                if not opts.git_add:
-                    print 'site is local, not added ot the repository'
             else:
                 print '%s site allredy existed' % check_name(opts)
         # make sure project was added to bash_aliases
@@ -168,13 +313,78 @@ def main(opts):
         # checkout repositories
         checkout_sa(opts)
 
-    elif opts.docker_create_container:
+    # docker_create_container
+    # -----------------------
+    # it creates and starts a docker container
+    # the created container collects info from sites.py for $SITENAME
+    # it uses the data found with the key "docker"
+    # it collects these data:
+    # - container_name: name of the container to create.
+    #   must be unique for each remote server
+    # - odoo_image_version: name of the docker image used to build
+    #   the container
+    # - odoo_port: port on which to the running odoo server within the
+    #   container can be reached. must be unique for each remote server
+    if opts.docker_create_container:
         # "-C", "--create_container",
         default_values.update(BASE_INFO)
         handler = dockerHandler(opts, default_values, site_name)
         handler.check_and_create_container()
 
-    elif opts.dataupdate or opts.dataupdate_docker:
+    # dataupdate or dataupdate_docker
+    # -------------------------------
+    # these options are used to copy a running remote server to a lokal
+    # odoo instance
+    #
+    # dataupdate:
+    # -----------
+    # this copies both an odoo db and the related file data structure from
+    # a remote server to a locally existing (buildout created) server.
+    # the needed info is gathered from diverse sources:
+    # local_data.py
+    # -------------
+    # - DB_USER: the user name with which to access the local database
+    #   default: the logged in user.
+    # - DB_PASSWORD: the password to access the local database server
+    #   default: odoo
+    #   If the option -p --password is used, the password in local_data is
+    #   overruled.
+    # remote data:
+    # ------------
+    # to collect data on the remote server the key remote_server is used
+    #   to get info from sites.py for $SITENAME
+    # - remote_url : the servers url
+    # - remote_path : COLLECT it from ODOO_SERVER_DATA ??
+    # local_data.REMOTE_USER_DIC:
+    # ---------------------------
+    # from this dictonary information on the remote server is collected
+    # this is done looking up 'remote_url' in local_data.REMOTE_USER_DIC.
+    # - remote_user: user to acces the remote server with
+    # - remote_pw : password to access the remote user with. should normaly the empty
+    #   as it is best only to use a public key.
+    # - remote_path: how the odoo erverdata can be access on the remote server
+    #   ??? should be created automatically
+    # sites_pw.py:
+    # ------------
+    # the several password used for the services to be acces on the odoo instance,
+    # the remote server or on the mail server can be mixed in from
+    # sites_pw.py.
+    # !!!! sites_pw.py should be kept separate, and should not be version controlled with the rest !!!
+    #
+    # it executes these steps:
+    # - it executes a a command in a remote remote server in a remote shell
+    #   this command starts a temporary docker container and dumps the
+    #   database of the source server to its dump folder which is:
+    #       $REMOTE_URL:$ODOO_SERVER_DATA/$SITENAME/dump/$SITENAME.dmp
+    # - rsync this file to:
+    #       localhost:$ODOO_SERVER_DATA/$SITENAME/dump/$SITENAME.dmp
+    # - drop the local database $SITENAME
+    # - create the local database $SITENAME
+    # - restore the local datbase $SITENAME from localhost:$ODOO_SERVER_DATA/$SITENAME/dump/$SITENAME.dmp
+    # - rsync the remote filestore to the local filestore:
+    #   which is done with a command similar to:
+    #   rsync -av $REMOTEUSER@$REMOTE_URL:$ODOO_SERVER_DATA/$SITENAME/filestore/ localhost:$ODOO_SERVER_DATA/$SITENAME/filestore/
+    if opts.dataupdate or opts.dataupdate_docker:
         # def __init__(self, opts, default_values, site_name, foldernames=FOLDERNAMES)
         if opts.dataupdate:
             handler = DBUpdater(opts, default_values, site_name)
@@ -182,12 +392,17 @@ def main(opts):
             handler = dockerHandler(opts, default_values, site_name)
         handler.doUpdate(db_update = not opts.noupdatedb)
 
-    elif opts.transferlocal or opts.transferdocker:
+    # transferlocal or transferdocker:
+    # this is similar to dataupdate or dataupdate_docker.
+    # the difference is, that the the target site is recreated from a a master site.
+    # to do so, the 'slave_info' key is looked up in the server info.
+    # these valuse are looked up:
+    # - master_site the name of the master site, the data is to be copied from
+    # - master_domain is the domain from which the master is copied
+    #   not used yet
+    if opts.transferlocal or opts.transferdocker:
         handler = DBUpdater(site_name)
         handler.doTransfer(opts)
-
-    if opts.alias:
-        add_aliases(opts, default_values)
 
 class NameAction(argparse.Action):
     # def error(self, message):
@@ -222,7 +437,6 @@ class _HelpAction(argparse._HelpAction):
 
         parser.exit()
 
-
 if __name__ == '__main__':
     usage = "create_system.py is tool to create and maintain local odoo developement environment\n" \
     "**************************\n" \
@@ -248,7 +462,6 @@ if __name__ == '__main__':
         "-v", "--verbose",
         action="store_true", dest="verbose", default=False,
         help="be verbose")
-
 
     parser = ArgumentParser(add_help=False)# ArgumentParser(usage=usage)
     parser.add_argument('--help', action=_HelpAction, help='help for help if you need some help')  # add custom help
@@ -379,9 +592,9 @@ if __name__ == '__main__':
     # -----------------------------------------------
     #parser_support_s = parser_support.add_subparsers(title='docker commands', dest="docker_commands")
     parser_docker = parser_s.add_parser(
-        'docker', 
-        #aliases=['d'],        
-        help='the option --docker has the following subcommands', 
+        'docker',
+        #aliases=['d'],
+        help='the option --docker has the following subcommands',
         parents=[parent_parser])
     parser_docker.add_argument(
         "-dc", "--create_container",
@@ -412,9 +625,9 @@ if __name__ == '__main__':
     # -----------------------------------------------
     #parser_docker_s = parser_docker.add_subparsers(title='remote commands', dest="remote_commands")
     parser_remote = parser_s.add_parser(
-        'remote', 
-        #aliases=['r'],    
-        help='the option -r --remote has the following subcommands', 
+        'remote',
+        #aliases=['r'],
+        help='the option -r --remote has the following subcommands',
         parents=[parent_parser])
     parser_remote.add_argument(
         "--add-apache",
