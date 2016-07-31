@@ -26,6 +26,11 @@ BASE_DEFAULTS = {
         'path to the projects',         # help
         '/home/%s/projects' % ACT_USER  # default
     ),
+    'odoo_server_data_path' : (
+        'server data path',              # display
+        'path to server data',          # help
+        '/home/%s/odoo_instances' % ACT_USER  # default
+    ),
     'docker_path_map' : (
         'docker path map. use , to separate parts',              # disply
         'docker volume mappings when docker is run locally', # help
