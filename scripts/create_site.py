@@ -20,6 +20,8 @@ add a version number to sites.py
 make an update script that applies changes to sites.py according to its
 actual version
 create an option that configures the mail servers on the target server
+
+install own needs either a string with comma separated options or all
 """
 
 #from optparse import OptionParser
@@ -57,7 +59,7 @@ from scripts.utilities import list_sites, check_name, create_folders, \
     update_base_info, add_site_to_sitelist, add_site_to_apache, get_config_info, \
     check_project_exists, create_new_project, module_add, construct_defaults, \
     add_aliases, check_and_create_container, checkout_sa, flatten_sites, \
-    create_server_config, diff_installed_modules, install_own_modules \
+    create_server_config, diff_installed_modules, install_own_modules, \
     name_neded
 
 # scripts.vcs handles git stuff
@@ -83,7 +85,7 @@ def collect_options(opts):
     # and if a valid otion is selected
     actual = opts._o.subparser_name
     _o = opts._o._get_kwargs()
-    skip = ['name', 'subparser_name', 'dockerdbpw', 'dockerdbuser']
+    skip = ['name', 'subparser_name', 'dockerdbpw', 'dockerdbuser', 'dbhost', 'dbpw', 'dbuser', 'rpchost', 'rpcport', 'rpcuser', 'rpcpw']
     keys = [k[0] for k in _o if k[0] not in skip]
     is_set = [k[1] for k in _o if k[1] and (k[0] not in skip)]
     return actual, is_set, keys
@@ -106,7 +108,7 @@ def main(opts):
         return
 
     # check if name is given and valid
-    site_name = check_name(opts, no_completion = True)
+    site_name = check_name(opts, no_completion = True, must_match=True)
 
     # resolve inheritance within sites
     flatten_sites(SITES)
@@ -146,7 +148,7 @@ def main(opts):
                 opts._o.__dict__[_o] = raw_input('value for %s:' % _o)
 
     # now we can really check whether name is given and valid
-    site_name = check_name(opts, no_completion = True)
+    site_name = check_name(opts)
     # if we have an option that nees a name ..
     if name_neded(opts) and not site_name:
         print 'done..'
@@ -165,15 +167,6 @@ def main(opts):
     # list_sites lists all existing sites both from global and local sites
     if opts.list_sites:
         list_sites(SITES)
-        return
-
-    # list_mdules
-    # -----------
-    # list_mdules list defined odoo install blocks
-    # each install block contains from a list of addons that and odoo module
-    # like CRM installs
-    if opts.listmodules:
-        install_own_modules(opts, default_values, list_only=True)
         return
 
     # showmodulediff and showmodulediff_refresh
@@ -225,15 +218,23 @@ def main(opts):
         add_site_to_apache(opts, default_values)
         return
 
+    # list_modules
+    # -----------
+    # list_modules list defined odoo install blocks
+    # each install block contains from a list of addons that and odoo module
+    # like CRM installs
+    if opts.listmodules:
+        install_own_modules(opts, default_values, list_only=True)
+        return
+
     # listownmodules
     # --------------
     # list the modules that are declared within the selected site
     # installown install all modules declared in the selected site
     # updateown updates one or all modules declared in the selected site
     # removeown removes one or all modules declared in the selected site
-    if opts.installown or opts.updateown or opts.removeown or \
-        opts.listownmodules or opts.installodoomodules:
-            install_own_modules(opts, default_values)
+    if opts.listownmodules or opts.installodoomodules:
+        install_own_modules(opts, default_values)
         return
 
     # alias
@@ -254,8 +255,46 @@ def main(opts):
     # any number of the can be selected, oder of execution is not defined
     # --------------------------------------------------------
 
-    # create builds or updates a server structure
+    # installown or updateown or removeown
+    # ------------------------------------
+    # installown install all modules declared in the selected site
+    # updateown updates one or all modules declared in the selected site
+    # removeown removes one or all modules declared in the selected site
+    #
+    # to be able to execute do this, the target server has to be running.
+    # this server is accessed uding odoo's rpc_api.
+    # to do so, info on user, that should access the running server needs
+    # to be collected. the following values
+    # read from either the config data or can be set using command line options.
+    # --- database ---
+    # - db_user : the user to access the servers database
+    #   to check what modules are allready installed the servers database
+    #   has to be accessed.
+    #   option: "-dbu", "--dbuser".
+    #   default: logged in user
+    # - db_password
+    #   option: "-p", "--dbpw".
+    #   default: admin
+    # - dbhost: the host on which the database is running
+    #   option: "-dbh", "--dbhost"
+    #   default: localhost.
+    # --- user accessing the running odoo server ---
+    # - rpcuser: the login user to access the odoo server
+    #   option: "-rpcu", "--rpcuser"
+    #   default: admin.
+    # - rpcpw: the login password to access the odoo server
+    #   option: "-P", "--rpcpw"
+    #   default: admin.
+    # - rpcport: the the odoo server is running at
+    #   option: "-PO", "--port"
+    #   default: 8069.
+
+    if opts.installown or opts.updateown or opts.removeown:
+        install_own_modules(opts, default_values)
+
+    # create
     # ------
+    # builds or updates a server structure
     # to do so, it does a number of steps
     #   - creates the needed folders in $ODOO_SERVER_DATA
     #   - creates a build structure in $PROJECT_HOME/$SITENAME/$SITENAME
@@ -473,11 +512,40 @@ if __name__ == '__main__':
         action="store_true", dest="verbose", default=False,
         help="be verbose")
 
+    parser_rpc = ArgumentParser(add_help=False)
     parser = ArgumentParser(add_help=False)# ArgumentParser(usage=usage)
     parser.add_argument('--help', action=_HelpAction, help='help for help if you need some help')  # add custom help
     parser_s = parser.add_subparsers(title='subcommands', dest="subparser_name")
     #parser_site   = parser_s.add_parser('s', help='the option -s --site-description has the following subcommands', parents=[parent_parser])
 
+    # -----------------------------------------------
+    # manage rpc stuff
+    # -----------------------------------------------
+    #parser_remote_s = parser_remote.add_subparsers(title='remote commands', dest="rpc_commands")
+    parser_rpc.add_argument("-dbh", "--dbhost",
+                            action="store", dest="dbhost", default='localhost',
+                            help="on what host is database running. default localhost\nif odd is running in a docker host, this value should be calculated automatically")
+    parser_rpc.add_argument("-p", "--dbpw",
+                            action="store", dest="dbpw", default='admin',
+                            help="the password to access the database. default 'admin'")
+    parser_rpc.add_argument("-dbu", "--dbuser",
+                            action="store", dest="dbuser", default=DB_USER,
+                            help="define user to log into database default %s" % DB_USER)
+    parser_rpc.add_argument("-rpch", "--rpchost",
+                            action="store", dest="rpchost", default='localhost',
+                            help="define where odoo runs and can be access trough the rpc api default localhost")
+    parser_rpc.add_argument("-rpcu", "--rpcuser",
+                            action="store", dest="rpcuser", default='admin',
+                            help="the user used to acces the running odo server using the rpc api. default admin")
+    parser_rpc.add_argument("-P", "--rpcpw",
+                            action="store", dest="rpcpw", default='admin',
+                            help="define password for the user that accesses the running odoo server trough the rpc api. default 'admin'")
+    parser_rpc.add_argument("-PO", "--port",
+                            action="store", dest="rpcport", default=8069,
+                            help="define the port on which the odoo server that will be accessed using the rpc api. default 8069")
+    #parser_rpc.add_argument("-dbp", "--dbport",
+                    #action="store", dest="dbport", default=5432,
+                    #help="define db port default 5432")
     # -----------------------------------------------
     # manage sites create and update sites
     # -----------------------------------------------
@@ -485,9 +553,9 @@ if __name__ == '__main__':
     #parser_site_s = parser_site.add_subparsers(title='manage sites', dest="site_creation_commands")
     parser_manage = parser_s.add_parser(
         'create',
-        help='create --manage-sites has the following subcommands',
+        help='create is used to manage local and remote sites',
         #aliases=['c'],
-        parents=[parent_parser],
+        parents=[parser_rpc, parent_parser],
         prog='PROG',
         usage='%(prog)s [options]')
     parser_manage.add_argument(
@@ -643,12 +711,12 @@ if __name__ == '__main__':
     parser_remote = parser_s.add_parser(
         'remote',
         #aliases=['r'],
-        help='the option -r --remote has the following subcommands',
+        help='the command remote is used to manage the remote server.',
         parents=[parent_parser])
     parser_remote.add_argument(
         "--add-apache",
         action="store_true", dest="add_apache", default=False,
-        help = 'add apache.conf to the local apache configuration, also option -n --name must be set'
+        help = 'add apache.conf to the apache configuration, also option -n --name must be set'
     )
     parser_remote.add_argument(
         "-CC", "--create_server",
@@ -660,45 +728,15 @@ if __name__ == '__main__':
         action="store_true", dest="transferlocal", default=False,
         help = 'transfer data from master to slave using shell commands'
     )
-    # -----------------------------------------------
-    # manage rpc stuff
-    # -----------------------------------------------
-    #parser_remote_s = parser_remote.add_subparsers(title='remote commands', dest="rpc_commands")
-    parser_rpc = parser_s.add_parser('rpc', help='the option rpc has the following subcommands', parents=[parent_parser])
-    parser_rpc.add_argument("-dbh", "--dbhost",
-                    action="store", dest="dbhost", default='localhost',
-                    help="define host default localhost")
-    parser_rpc.add_argument("-rpch", "--rpchost",
-                    action="store", dest="rpchost", default='localhost',
-                    help="define rpchost (where odoo runs) default localhost")
-    parser_rpc.add_argument("-db", "--dbname",
-                    action="store", dest="dbname", default='',
-                    help="define database default ''")
-    parser_rpc.add_argument("-dbu", "--dbuser",
-                    action="store", dest="dbuser", default=DB_USER,
-                    help="define user to log into db default %s" % DB_USER)
-    parser_rpc.add_argument("-rpcu", "--rpcuser",
-                    action="store", dest="rpcuser", default='admin',
-                    help="define user to log into odoo default admin")
-    parser_rpc.add_argument("-p", "--dbpw",
-                    action="store", dest="dbpw", default='admin',
-                    help="define password to log into db default 'admin'")
-    parser_rpc.add_argument("-P", "--rpcpw",
-                    action="store", dest="rpcpw", default='admin',
-                    help="define password for odoo user default 'admin'")
-    parser_rpc.add_argument("-PO", "--port",
-                    action="store", dest="rpcport", default=8069,
-                    help="define rpc port default 8069")
-    parser_rpc.add_argument("-dbp", "--dbport",
-                    action="store", dest="dbport", default=5432,
-                    help="define db port default 5432")
 
     #(opts, args) = parser.parse_args()
     parser.set_default_subparser('create')
     args, unknownargs = parser.parse_known_args()
     opts = OptsWrapper(args)
     if not opts.name and unknownargs:
-        opts._o.__dict__['name'] = unknownargs[0]
+        unknownargs = [a for a in unknownargs if a and a[0] != '-']
+        if unknownargs:
+            opts._o.__dict__['name'] = unknownargs[0]
 
     # is there a valid option?
     main(opts) #opts.noinit, opts.initonly)

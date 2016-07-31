@@ -66,6 +66,16 @@ except ImportError:
     print '*' * 80
     sys.exit()
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 # -------------------------------------------------------------------
 # name_neded
@@ -98,7 +108,7 @@ def name_neded(opts, option=None):
         "listmodules",
     ]
     # do we need a name
-    if an option is provide, check this one
+    # if an option is provide, check this one
     if option:
         if option in no_need_name:
             return
@@ -113,8 +123,8 @@ def name_neded(opts, option=None):
             # we faoun an option set that does not require name
             return
     # bah, what should we do ..
-    # lets assume, we do not need a name ..
-    return
+    # lets assume, we do need a name ..
+    return True
 
 # -------------------------------------------------------------------
 # check_name
@@ -124,7 +134,7 @@ def name_neded(opts, option=None):
 # @no_completion: flag whether a vlid name should be selected for a
 #                 selection list
 # -------------------------------------------------------------------
-def check_name(opts, parser_name='', no_completion = False):
+def check_name(opts, parser_name='', no_completion = False, must_match = False):
     if opts:
         if isinstance(opts, basestring):
             name = opts
@@ -144,13 +154,23 @@ def check_name(opts, parser_name='', no_completion = False):
             if opts.add_site or opts.add_site_local:
                 return name
     # no name
-    if not no_completion:
+    if not name:
+        name = '' # make sure it is a string
+    if no_completion:
         # probably called at startup
-        return name
+        if must_match:
+            matches = [k for k in SITES.keys() if k.startswith(name)]
+            if not matches:
+                print bcolors.WARNING + ('%s does not match any site name, discarded!' % name) + bcolors.ENDC
+                opts._o.__dict__['name'] = ''
+                return ''
+            return name
+        else:
+            return name
     if not name_neded(opts):
         return
     done = False
-    cmpl = SimpleCompleter(SITES, default = name or opts.sitename or '', prompt='please provide valid site name:')
+    cmpl = SimpleCompleter('', options=SITES.keys(), default = name or opts.sitename or '', prompt='please provide valid site name:')
     while not done:
         _name = cmpl.input_loop()
         if _name is None:
@@ -192,25 +212,52 @@ def get_cursor(opts):
 # get_module_obj logs into odoo and then
 # returns an object with which we can manage the list of modules
 # bail out if we can not log into a running odoo site
+
+# the databse is access directly
+# the odoo server is accessed uding odoo's rpc_api.
+# read from either the config data or can be set using command line options.
+# --- database ---
+# - db_user : the user to access the servers database
+#   to check what modules are allready installed the servers database
+#   has to be accessed.
+#   option: "-dbu", "--dbuser".
+#   default: logged in user
+# - db_password
+#   option: "-p", "--dbpw".
+#   default: admin
+# - dbhost: the host on which the database is running
+#   option: "-dbh", "--dbhost"
+#   default: localhost.
+# --- user accessing the running odoo server ---
+# - rpcuser: the login user to access the odoo server
+#   option: "-rpcu", "--rpcuser"
+#   default: admin.
+# - rpcpw: the login password to access the odoo server
+#   option: "-P", "--rpcpw"
+#   default: admin.
+# - rpcport: the the odoo server is running at
+#   option: "-PO", "--port"
+#   default: 8069.
+
 def get_module_obj(opts):
     dbname = opts.dbname or opts.name
     try:
         import odoorpc
     except ImportError:
-        print 'please install odoorpc'
-        print 'execute bin/pip install -r install/requirements.txt'
+        print bcolors.WARNING + 'please install odoorpc'
+        print 'execute bin/pip install -r install/requirements.txt'  + bcolors.ENDC
         return
     #button_immediate_install(self, cr, uid, ids, context=None)
     try:
         odoo = odoorpc.ODOO(opts.rpchost, port=opts.rpcport)
         odoo.login(dbname, opts.rpcuser, opts.rpcpw)
     except odoorpc.error.RPCError:
-        print 'could not login to running odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (opts.dbhost, opts.dbport, dbname, opts.rpcuser, opts.rpcpw)
+        print bcolors.FAIL + 'could not login to running odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (opts.dbhost, opts.dbport, dbname, opts.rpcuser, opts.rpcpw) + bcolors.ENDC
         return
     except urllib2.URLError:
-        print 'could not login to odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (opts.dbhost, opts.dbport, dbname, opts.rpcuser, opts.rpcpw)
+        print bcolors.FAIL + 'could not login to odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (opts.dbhost, opts.dbport, dbname, opts.rpcuser, opts.rpcpw)
         print 'connection was refused'
-        print 'make sure odoo is running at the given address'
+        print 'make sure odoo is running at the given address'  + bcolors.ENDC
         return
     module_obj = odoo.env['ir.module.module']
     return module_obj
@@ -305,6 +352,7 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
         print '---------------------------------------------------'
         return
 
+    # collect data on what modules are defined for this site
     site_name = check_name(opts)
     site = SITES[site_name]
     site_addons = site.get('addons')
@@ -312,6 +360,8 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
     req = []
     module_obj = None
     if opts.installown or opts.updateown or opts.removeown or opts.listownmodules or quiet: # what else ??
+        # collect the names of the modules declared in the addons stanza
+        # idealy their names are set, if not, try to find them out
         for a in (site_addons or []):
             # find out name
             name = ''
@@ -330,6 +380,7 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
                 if a and not quiet:
                     print '----> coud not detect name for %s' % a.get('url', '')
 
+    # if we only want the list to install, no need to be wordy
     if opts.listownmodules or quiet=='listownmodules':
         if quiet:
             return req
@@ -494,11 +545,12 @@ def create_server_config(opts, default_values):
 # @default_values   : default value
 # @foldernames      : list of folders to create within the site foler
 # ----------------------------------
+
 def create_folders(opts, default_values, foldernames):
     name = check_name(opts)
     errors = False
     if not name:
-        print 'site name not provided'
+        print bcolors.FAIL + 'site name not provided' + bcolors.ENDC
         return
     p = os.path.normpath('%s/%s' % (default_values['sites_home'], name))
     for pn in [''] + foldernames:
@@ -507,9 +559,9 @@ def create_folders(opts, default_values, foldernames):
             os.mkdir(pp)
         except:
             errors = True
-            print 'could not create %s' % pp
+            print bcolors.FAIL + 'could not create %s' % pp  + bcolors.ENDC
     if errors:
-        print 'not all directories could be created'
+        print bcolors.WARNING + 'not all directories could be created'  + bcolors.ENDC
     else:
         print 'directories for %s created' % check_name(opts)
 
@@ -576,7 +628,6 @@ def update_base_info(base_info_path, defaults):
     get_base_info(base_info, defaults)
     set_base_info(base_info, base_info_path)
     print '%s created' % base_info_path
-    print 'please restart'
 
 # ----------------------------------
 # list_sites
@@ -830,7 +881,8 @@ def construct_defaults(site_name, opts = None):
     if isinstance(site_name, basestring):
         if opts:
             if (not opts.add_site) and (not opts.add_site_local) and (not opts.listmodules):
-                default_values.update(SITES.get(site_name))
+                if site_name:
+                    default_values.update(SITES.get(site_name))
         else:
             default_values.update(SITES.get(site_name))
     site_base_path = os.path.normpath(os.path.expanduser('%(project_path)s/%(site_name)s/' % default_values))
