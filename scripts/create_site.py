@@ -384,6 +384,11 @@ def main(opts):
     # - rsync the remote filestore to the local filestore:
     #   which is done with a command similar to:
     #   rsync -av $REMOTEUSER@$REMOTE_URL:$ODOO_SERVER_DATA/$SITENAME/filestore/ localhost:$ODOO_SERVER_DATA/$SITENAME/filestore/
+    #
+    # run_local_docker
+    # ----------------
+    # when the option -L --local_docker is used, data is copied from a docker container
+    # running on localhost
     if opts.dataupdate or opts.dataupdate_docker:
         # def __init__(self, opts, default_values, site_name, foldernames=FOLDERNAMES)
         if opts.dataupdate:
@@ -400,6 +405,11 @@ def main(opts):
     # - master_site the name of the master site, the data is to be copied from
     # - master_domain is the domain from which the master is copied
     #   not used yet
+    #
+    # run_local_docker
+    # ----------------
+    # when the option -L --local_docker is used, data is copied from a docker container
+    # running on localhost
     if opts.transferlocal or opts.transferdocker:
         handler = DBUpdater(site_name)
         handler.doTransfer(opts)
@@ -618,6 +628,12 @@ if __name__ == '__main__':
         "-dud", "--dataupdate_docker",
         action="store_true", dest="dataupdate_docker", default=False,
         help = 'update local data from remote server into local docker'
+    )
+    # !!! local_docker is added to parent_parser, not parser_docker
+    parent_parser.add_argument(
+        "-L", "--local-docker",
+        action="store_true", dest="local_docker", default=False,
+        help = 'allways use a docker running locally as source when updating local data'
     )
 
     # -----------------------------------------------
