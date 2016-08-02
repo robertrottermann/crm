@@ -35,7 +35,7 @@ access local docker db of site hugo using psql:
 
 create dbdumper image:
 ----------------------
-    to be able to do datatransfer to a databse within docker, we need a dbdumer Image
+    to be able to do transfer data to a databse within docker, we need a dbdumer Image
     this can be created as follows:
 
       cd dumper

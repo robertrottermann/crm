@@ -23,7 +23,64 @@ create an option that configures the mail servers on the target server
 
 install own needs either a string with comma separated options or all
 """
-
+"""
+in defaul_date we have something like this:
+not all values are allways set!
+{   'addlinks': None,
+    'addons': [{}]
+    'addons_path': '',
+    'admin_passwd': 'admin',
+    'apache': {},
+    'base_path': '/home/robert/projects/afbstest',
+    'create_database': True,
+    'current_user': '%(db_user)s',
+    'data_dir': '/home/robert/odoo_instances/afbstest',
+    'db_host': 'localhost',
+    'db_maxconn': '64',
+    'db_name': 'afbstest',
+    'db_password': 'admin',
+    'db_port': False,
+    'db_template': 'template1',
+    'db_user': 'robert',
+    'dbfilter': '%(db_name)s',
+    'debug_mode': False,
+    'demo': False,
+    'dev_mode': True,
+    'docker': {},
+    'docker_path_map': (),
+    'inherit': 'afbs',
+    'inner': '/home/robert/projects/afbstest/afbstest',
+    'is_local': False,
+    'odoo_addons': [],
+    'odoo_admin_pw': '',
+    'odoo_server_data_path': '/home/robert/odoo_instances',
+    'odoo_version': '9.0',
+    'outer': '/home/robert/projects/afbstest',
+    'pg_password': 'odoo',
+    'pip': [],
+    'pip_modules': '\n',
+    'project_path': '/home/robert/projects',
+    'projectname': '%(site_name)s',
+    'remote_data_dir': '%(remote_datadir)s',
+    'remote_database': 'afbsecure',
+    'remote_db_user': '%(db_user)s',
+    'remote_dump_path': '%(remote_dump_path)s',
+    'remote_localhost': 'localhost',
+    'remote_server': {   'remote_path': '/root/odoo_instances', 'remote_url': '82.220.39.73', 'remote_user': 'root'},
+    'remote_url': 'localhost',
+    'remote_user': '%(db_user)s',
+    'reportgz': False,
+    'running_local': True,
+    'server_wide_modules': 'None',
+    'servername': 'afbstest',
+    'site_addons': '',
+    'site_name': 'afbstest',
+    'sites_home': '/home/robert/odoo_instances',
+    'skeleton': '/home/robert/odoo_instances/skeleton',
+    'skip': {   },
+    'slave_info': {  },
+}
+"""
 #from optparse import OptionParser
 class bcolors:
     HEADER = '\033[95m'
@@ -87,7 +144,7 @@ def collect_options(opts):
     _o = opts._o._get_kwargs()
     skip = ['name', 'subparser_name', 'dockerdbpw', 'dockerdbuser', 'dbhost', 'dbpw', 'dbuser', 'rpchost', 'rpcport', 'rpcuser', 'rpcpw']
     keys = [k[0] for k in _o if k[0] not in skip]
-    is_set = [k[1] for k in _o if k[1] and (k[0] not in skip)]
+    is_set = [k for k in _o if k[1] and (k[0] not in skip)]
     return actual, is_set, keys
 
 def main(opts):
@@ -291,7 +348,12 @@ def main(opts):
 
     if opts.installown or opts.updateown or opts.removeown:
         install_own_modules(opts, default_values)
+    if opts.dinstallown or opts.dupdateown or opts.dremoveown:
+        handler = dockerHandler(opts, default_values, site_name)
+        handler.install_own_modules()
 
+        
+        
     # create
     # ------
     # builds or updates a server structure
@@ -697,6 +759,27 @@ if __name__ == '__main__':
         action="store_true", dest="dataupdate_docker", default=False,
         help = 'update local data from remote server into local docker'
     )
+    parser_docker.add_argument(
+        "-dio", "--dinstallown",
+        action="store_true", dest="dinstallown", default=False,
+        help = 'install modules listed as addons'
+    )
+    parser_docker.add_argument(
+        "-uo", "--dupdateown",
+        action="store", dest="dupdateown", default='',
+        help = 'update modules listed as addons, pass a comma separated list (no spaces) or all'
+    )
+    parser_docker.add_argument(
+        "-dro", "--dremoveown",
+        action="store", dest="dremoveown", default='',
+        help = 'remove modules listed as addons, pass a comma separated list (no spaces) or all'
+    )
+    parser_docker.add_argument(
+        "-dI", "--dinstallodoomodules",
+        action="store_true", dest="installodoomodules", default=False,
+        help = 'install modules listed as odoo addons'
+    )
+    
     # !!! local_docker is added to parent_parser, not parser_docker
     parent_parser.add_argument(
         "-L", "--local-docker",

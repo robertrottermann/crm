@@ -141,31 +141,103 @@ class DBUpdater(object):
         remote_user = server_info['remote_user']
         remote_data_dir = server_info['remote_data_dir']
         remote_url = server_info['remote_url']
+        user = server_info['user']
+        pw = server_info['pw']
         
         dpath = '%s/%s/dump/%s.dmp' % (self.sites_home, db_name, db_name)
         if not norefresh:
-            os.system('%s/scripts/updatedb.sh %s %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user, self.sites_home))
+            """
+            #!/bin/sh
+            # updatedb.sh executes the script dodump on a remote server
+            # dodump creates a temporary docker container that dumps a servers database
+            # into this servers data folder within odoo_instances
+            # parameters:
+            # $1 : site name
+            # $2 : server url
+            # $3 : remote_path like /root/odoo_instances
+            # $4 : login name on remote server
+            # $5 : local path to odo_instances
+            echo '---------------------'
+            c1="ssh $4@$2 'bash -s' < $5/scripts/dodump.sh $1"
+            echo "-1-" $c1
+            $c1
+            c2="rsync -avzC --delete $4@$2:$3/$1/filestore/ $5/$1/filestore/"
+            echo "-2-" $c2
+            $c2
+            c3="rsync -avzC --delete $4@$2:$3/$1/dump/ $5/$1/dump/"
+            echo "-3-" $c3
+            $c3           
+            """
+            os.system('%s/scripts/updatedb.sh %s %s %s %s %s' % (
+                self.sites_home, 
+                db_name, 
+                remote_url, 
+                remote_data_dir, 
+                remote_user, 
+                self.sites_home))
             # if remote user is not root we first have to copy things where we can access it
             if remote_user != 'root':
+                """
+                #!/bin/sh
+                # updatedb.sh executes the script dodump_remote on a remote server
+                # it runs site_syncer on the remote server. this script runs as root
+                # and rsyncs the sites files to a place from where we can copy it
+                # parameters:
+                # $1 : site name
+                # $2 : server url
+                # $3 : remote_path like /root/odoo_instances
+                # $4 : login name on remote server
+                # $5 : path to instances home on the remote server (/root/odoo_sites)
+                echo ssh $4@$2 'bash -s' < scripts/dodump_remote.sh $s $2 $3 $4 $5
+                ssh $4@$2 'bash -s' < scripts/dodump_remote.sh $1 $2 $3 $4 $5               
+                """
                 # this calls the remote site_syncer.py script
-                # it copy needed files to the users home and changes ownership
-                os.system('%s/scripts/updatedb_remote.sh %s %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user, remote_path))
+                # it copies needed files to the users home and changes ownership
+                os.system('%s/scripts/updatedb_remote.sh %s %s %s %s %s' % (
+                    self.sites_home, 
+                    db_name, 
+                    remote_url, 
+                    remote_data_dir, 
+                    remote_user, 
+                    remote_path))
             # rsync the remote files to the local directories
-            os.system('%s/scripts/rsync_remote_local.sh %s %s %s %s' % (self.sites_home, db_name, remote_url, remote_data_dir, remote_user))
+            """
+            #!/bin/sh
+            # updatedb.sh executes the script dodump on a remote server
+            # dodump creates a temporary docker container that dumps a servers database
+            # into this servers data folder within odoo_instances
+            # parameters:
+            # $1 : site name
+            # $2 : server url
+            # $3 : remote_path like /root/odoo_instances
+            # $4 : login name on remote server
+            echo ssh $4@$2 'bash -s' < scripts/dodump.sh $1
+            ssh $4@$2 'bash -s' < scripts/dodump.sh $1
+            echo rsync -avzC --delete $4@$2:/$3/$1/filestore/ $1/filestore/
+            rsync -avzC --delete $4@$2:/$3/$1/filestore/ $1/filestore/
+            echo rsync -avzC --delete $4@$2:/$3/$1/dump/ $1/dump/
+            rsync -avzC --delete $4@$2:/$3/$1/dump/ $1/dump/          
+            """
+            os.system('%s/scripts/rsync_remote_local.sh %s %s %s %s' % (
+                self.sites_home, 
+                db_name, 
+                remote_url, 
+                remote_data_dir, 
+                remote_user))
             if not os.path.exists(dpath):
                 print '-------------------------------------------------------'
                 print '%s not found' % dpath
                 print '-------------------------------------------------------'
                 return
             try:
-                if opts.backup:
+                if self.opts.backup:
                     # no need to update database
                     return
             except AttributeError:
                 pass
         if db_update:
             pw   = self.db_password
-            user = self.db_useruser
+            user = self.db_user
             shell = False
             # mac needs absolute path to psql
             where = os.path.split(which('psql'))[0]
@@ -196,12 +268,12 @@ class DBUpdater(object):
             cmd_lines = [
             ]
 
-            if opts.dataupdate_docker or opts.transferdocker:
+            if self.opts.dataupdate_docker or self.opts.transferdocker:
                 cmd_lines = cmd_lines_docker + cmd_lines
                 shell = True
             else:
                 cmd_lines = cmd_lines_no_docker + cmd_lines
-            self.run_commands(cmd_lines, shell=shell)
+            self.run_commands(cmd_lines, shell=shell, user=user, pw=pw)
         
     def doUpdate(self, db_update=True, norefresh=None, names=[]):
         opts = self.opts
@@ -315,19 +387,19 @@ class DBUpdater(object):
                 stopdocker = 'docker stop %s' % docker_info.get('container_name')
                 cmd_lines += [stopdocker]
             # execute transfer
-            self.run_commands(cmd_lines)
+            self.run_commands(cmd_lines, user, pw) # user and pw needs to be defined ??
             # update database
             self.doUpdate(names=[site_name], norefresh=True)
             if opts.transferdocker:
                 # restart local docker
                 startdocker = 'docker restart %s' %docker_info.get('container_name')
                 cmd_lines += [startdocker]
-                self.run_commands(cmd_lines)
+                self.run_commands(cmd_lines, user, pw)
 
-    def run_commands(self, cmd_lines, shell=True):
+    def run_commands(self, cmd_lines, user, pw, shell=True):
         opts = self.opts
-        pw   = self.db_password
-        user = self.db_user
+        #pw   = self.db_password
+        #user = self.db_user
         counter = 0
         for cmd_line in cmd_lines:
             counter +=1

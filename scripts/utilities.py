@@ -196,11 +196,16 @@ def check_name(opts, parser_name='', no_completion = False, must_match = False):
 
 # ----------------------------------
 # get_connection opens a connection to a database
-def get_cursor(opts):
+def get_cursor(opts, info={}):
+    dbuser = info.get('dbuser', opts.dbuser)
+    dbhost = info.get('dbhost', opts.dbhost)
+    dbpw = info.get('dbpw', opts.dbpw)
+    dbname = opts.dbname or opts.name
+    
     if opts.dbpw:
-        conn_string = "dbname='%s' user=%s host='%s' password='%s'" % (opts.dbname or opts.name, opts.dbuser,  opts.dbhost, opts.dbpw)
+        conn_string = "dbname='%s' user=%s host='%s' password='%s'" % (dbname, dbuser, dbhost, dbpw)
     else:
-        conn_string = "dbname='%s' user=%s host='%s'" % (opts.dbname or opts.name, opts.dbuser,  opts.dbhost)
+        conn_string = "dbname='%s' user=%s host='%s'" % (dbname, dbuser, dbhost)
 
     conn = psycopg2.connect(conn_string)
     #cursor = conn.cursor()
@@ -239,7 +244,7 @@ def get_cursor(opts):
 #   option: "-PO", "--port"
 #   default: 8069.
 
-def get_module_obj(opts):
+def get_module_obj(opts, info = {}):
     dbname = opts.dbname or opts.name
     try:
         import odoorpc
@@ -249,13 +254,19 @@ def get_module_obj(opts):
         return
     #button_immediate_install(self, cr, uid, ids, context=None)
     try:
-        odoo = odoorpc.ODOO(opts.rpchost, port=opts.rpcport)
-        odoo.login(dbname, opts.rpcuser, opts.rpcpw)
+        # if we want to access a docker container, rpsuser and rpcpw has to be adjusted beforehand
+        rpchost = info.get('rpchost', opts.rpchost)
+        port = info.get('port', opts.port)
+        rpcuser = info.get('rpcuser', opts.rpcuser)
+        rpcpw = info.get('rpcpw', opts.rpcpw)
+        
+        odoo = odoorpc.ODOO(rpchost, port=port)
+        odoo.login(dbname, rpcuser, rpcpw)
     except odoorpc.error.RPCError:
-        print bcolors.FAIL + 'could not login to running odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (opts.dbhost, opts.dbport, dbname, opts.rpcuser, opts.rpcpw) + bcolors.ENDC
+        print bcolors.FAIL + 'could not login to running odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (dbhost, dbport, dbname, rpcuser, rpcpw) + bcolors.ENDC
         return
     except urllib2.URLError:
-        print bcolors.FAIL + 'could not login to odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (opts.dbhost, opts.dbport, dbname, opts.rpcuser, opts.rpcpw)
+        print bcolors.FAIL + 'could not login to odoo server host: %s:%s, db: %s, user: %s, pw: %s' % (dbhost, dbport, dbname, rpcuser, rpcpw)
         print 'connection was refused'
         print 'make sure odoo is running at the given address'  + bcolors.ENDC
         return
@@ -342,7 +353,7 @@ def diff_installed_modules(opts, req, mod_path, rewrite, list_only=False):
 # install_own_modules
 # own modules are listed in insyste.py under the key addons
 
-def install_own_modules(opts, default_values, list_only=False, quiet=False):
+def install_own_modules(opts, default_values, list_only=False, quiet=False, info_dic={}):
     if list_only:
         from templates.install_blocks import INSTALL_BLOCKS
         print '\nthe following installable odoo module blocks exist:'
@@ -359,7 +370,7 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
     odoo_addons = site.get('odoo_addons')
     req = []
     module_obj = None
-    if opts.installown or opts.updateown or opts.removeown or opts.listownmodules or quiet: # what else ??
+    if 1:#opts.installown or opts.updateown or opts.removeown or opts.listownmodules or quiet: # what else ??
         # collect the names of the modules declared in the addons stanza
         # idealy their names are set, if not, try to find them out
         for a in (site_addons or []):
@@ -381,7 +392,7 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
                     print '----> coud not detect name for %s' % a.get('url', '')
 
     # if we only want the list to install, no need to be wordy
-    if opts.listownmodules or quiet=='listownmodules':
+    if opts.dlistownmodules or opts.listownmodules or quiet=='listownmodules':
         if quiet:
             return req
         print '\nthe following modules will be installed for %s:' % site_name
@@ -391,7 +402,7 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
         print '---------------------------------------------------'
         return
 
-    if opts.installodoomodules:
+    if opts.dinstallodoomodules or opts.installodoomodules:
         from templates.install_blocks import INSTALL_BLOCKS
         for o in (odoo_addons or []):
             if not INSTALL_BLOCKS.has_key(o):
@@ -407,11 +418,11 @@ def install_own_modules(opts, default_values, list_only=False, quiet=False):
         installed = []
         uninstalled = []
         to_upgrade = []
-        module_obj = get_module_obj(opts)
+        module_obj = get_module_obj(opts, info_dic)
         if not module_obj:
             return
         module_obj.update_list()
-        cursor = get_cursor(opts)
+        cursor = get_cursor(opts, info_dic)
         collect_info(opts, cursor, req, installed, uninstalled, to_upgrade)
         if req:
             print '*' * 80
